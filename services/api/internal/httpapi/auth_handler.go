@@ -32,6 +32,8 @@ func NewAuthHandler(service *auth.Service, limiter authRateLimiter, cfg config.A
 	return &AuthHandler{service: service, authorization: NewAuthorizationMiddleware(service, logger), limiter: limiter, cfg: cfg, logger: logger}
 }
 
+func (h *AuthHandler) Authorization() *AuthorizationMiddleware { return h.authorization }
+
 func (h *AuthHandler) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Post("/register", h.rateLimited("register", h.cfg.RegisterRateLimit, h.register))

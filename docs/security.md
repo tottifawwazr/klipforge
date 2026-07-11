@@ -67,6 +67,12 @@ Request logging records method, route, status, duration, request ID, and remote 
 
 Authorization denials log only request ID, route, method, authenticated user ID, role, policy name, decision, and a safe reason code. Database error details are not exposed to clients. Authentication rate limits remain unchanged and execute on their existing public endpoints before authentication services.
 
+## Campaign management
+
+Campaign ownership is always derived from the authenticated brand and verified from `campaigns.brand_id`; requests cannot supply a trusted `brand_id`. Public campaign discovery exposes only ACTIVE campaigns and a restricted public representation. Private brand data and financial fields require the owner’s active authenticated session; other brands receive a safe not-found campaign response.
+
+Campaign state changes are explicit routes, not a generic writable status field. Campaign creation, updates, platform/requirement replacement, lifecycle transition, and the associated audit record occur in a database transaction. Decimal monetary values are handled as validated decimal strings and PostgreSQL `numeric` values, never binary floating point.
+
 ## Secrets
 
 `JWT_SECRET` and `REFRESH_TOKEN_PEPPER` must each contain at least 32 characters and must be independently generated. Development fallback values are rejected when `APP_ENV=production`. No production secrets belong in committed files.

@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/klipforge/klipforge/services/api/internal/auth"
+	"github.com/klipforge/klipforge/services/api/internal/campaign"
 	"github.com/klipforge/klipforge/services/api/internal/config"
 	"github.com/klipforge/klipforge/services/api/internal/dependency"
 	"github.com/klipforge/klipforge/services/api/internal/health"
@@ -66,7 +67,9 @@ func run() error {
 	tokenService := auth.NewTokenService(cfg.Auth.JWTSecret, cfg.Auth.RefreshTokenPepper, cfg.Auth.JWTIssuer, cfg.Auth.JWTAudience, cfg.Auth.AccessTokenTTL, cfg.Auth.RefreshTokenTTL)
 	authService := auth.NewService(authRepository, auth.NewPasswordService(cfg.Auth.BcryptCost), tokenService)
 	authHandler := httpapi.NewAuthHandler(authService, redis, cfg.Auth, logger)
-	router := httpapi.NewRouter(cfg, logger, healthHandler, authHandler)
+	campaignService := campaign.NewService(campaign.NewRepository(postgres.Pool()))
+	campaignHandler := httpapi.NewCampaignHandler(campaignService, authHandler.Authorization(), logger)
+	router := httpapi.NewRouterWithCampaigns(cfg, logger, healthHandler, authHandler, campaignHandler)
 	httpServer := server.New(cfg.HTTP, router, logger)
 
 	serveErrors := make(chan error, 1)

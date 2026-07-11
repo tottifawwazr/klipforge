@@ -116,3 +116,38 @@ The ownership check must pass the route resource ID to `Policies.CanManageCampai
 ## Token and cookie configuration
 
 Access tokens default to 15 minutes (`ACCESS_TOKEN_TTL`); refresh sessions default to 30 days (`REFRESH_TOKEN_TTL`). See [security.md](./security.md) and `.env.example` for issuer, audience, secret, cookie, bcrypt, and throttling configuration.
+
+## Campaigns (Phase 3A)
+
+### Public discovery
+
+`GET /api/v1/campaigns` and `GET /api/v1/campaigns/{campaignID}` are public. They expose only `ACTIVE` campaigns and return public fields: title, slug, description, brief, dates, thumbnail, platforms, and requirements. They never return a brand ID, budget, remaining budget, CPM, maximum payout, or private lifecycle data.
+
+List parameters: `page`, `limit` (maximum 100), `search`, `platform`, `start_date`, `end_date`, `sort` (`created_at`, `start_date`, `end_date`, or `title`), and `direction` (`asc` or `desc`). Responses include `campaigns` and `pagination` with page, limit, total_items, and total_pages.
+
+### Brand management
+
+All brand routes require a valid active BRAND access token and active session:
+
+- `POST /api/v1/campaigns` creates a DRAFT owned by the authenticated brand.
+- `GET /api/v1/brand/campaigns` lists only that brand’s campaigns.
+- `GET /api/v1/brand/campaigns/{campaignID}` gets a private campaign.
+- `PATCH /api/v1/brand/campaigns/{campaignID}` edits only DRAFT or PAUSED campaigns.
+- Lifecycle actions: `/publish`, `/pause`, `/resume`, `/complete`, and `/cancel`.
+
+Create accepts decimal monetary values as strings, not floating-point values. `brand_id`, `remaining_budget`, status, timestamps, and financial history are never accepted from the client. Slugs are generated from the title when omitted and are immutable after creation.
+
+### Administrative campaign access
+
+Active ADMIN users may use `GET /api/v1/admin/campaigns`, `GET /api/v1/admin/campaigns/{campaignID}`, and the explicit `POST /api/v1/admin/campaigns/{campaignID}/cancel` operation. Administrative cancellation follows the same allowed non-terminal transition rules and produces a distinct audit action.
+
+### Lifecycle
+
+| From | Allowed action | To |
+| --- | --- | --- |
+| DRAFT | publish, cancel | ACTIVE, CANCELLED |
+| ACTIVE | pause, complete, cancel | PAUSED, COMPLETED, CANCELLED |
+| PAUSED | resume, complete, cancel | ACTIVE, COMPLETED, CANCELLED |
+| COMPLETED/CANCELLED | none | terminal |
+
+Publishing and resuming require valid campaign content, a usable positive remaining budget, an unexpired date range, and at least one allowed platform. Every create, update, transition, and administrative cancellation creates a safe audit record.

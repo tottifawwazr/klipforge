@@ -12,6 +12,18 @@ import (
 )
 
 func NewRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandlers ...*AuthHandler) http.Handler {
+	var authHandler *AuthHandler
+	if len(authHandlers) > 0 {
+		authHandler = authHandlers[0]
+	}
+	return newRouter(cfg, logger, healthHandler, authHandler, nil)
+}
+
+func NewRouterWithCampaigns(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler) http.Handler {
+	return newRouter(cfg, logger, healthHandler, authHandler, campaignHandler)
+}
+
+func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler) http.Handler {
 	router := chi.NewRouter()
 
 	router.Use(requestIDMiddleware)
@@ -25,8 +37,13 @@ func NewRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHand
 	router.Get("/healthz", healthHandler.Liveness)
 	router.Route("/api/v1", func(api chi.Router) {
 		api.Get("/health", healthHandler.Readiness)
-		if len(authHandlers) > 0 && authHandlers[0] != nil {
-			api.Mount("/auth", authHandlers[0].Routes())
+		if authHandler != nil {
+			api.Mount("/auth", authHandler.Routes())
+		}
+		if campaignHandler != nil {
+			api.Mount("/campaigns", campaignHandler.PublicRoutes())
+			api.Mount("/brand/campaigns", campaignHandler.BrandRoutes())
+			api.Mount("/admin/campaigns", campaignHandler.AdminRoutes())
 		}
 	})
 

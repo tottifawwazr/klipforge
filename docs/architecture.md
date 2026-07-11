@@ -61,6 +61,12 @@ Public health, registration, login, refresh, and cookie-based logout routes rema
 
 `internal/authorization` contains parameterized ownership repositories and policies for campaigns, participation, submissions, payouts, and profiles. Each policy declares its own administrator exception; no global administrator bypass exists. Inaccessible owned resources map to a safe not-found decision, while infrastructure errors remain internal.
 
+## Campaign module
+
+Phase 3A adds `internal/campaign` with separate HTTP handler, service, repository, validation, lifecycle, and audit responsibilities. The campaign service owns the DRAFT/ACTIVE/PAUSED/COMPLETED/CANCELLED transition rules. Its repository uses PostgreSQL transactions for campaign records, platform and requirement replacement, and audit entries.
+
+Public campaign routes mount separately from brand and administrator management routes. Brand and administrator routes compose the existing authentication, active-user, active-session, and role middleware; the campaign service then verifies database ownership before returning private data or writing state.
+
 ## Operational workflow
 
 Use Docker Compose tool-profile commands or the matching Make targets:

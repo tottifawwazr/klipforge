@@ -157,13 +157,15 @@ func seed(ctx context.Context, tx pgx.Tx) error {
 	for _, campaign := range campaigns {
 		if err := exec(ctx, tx, "seed campaign", `
 			INSERT INTO campaigns (
-				id, brand_id, name, description, status, budget_amount, remaining_budget_amount,
+				id, brand_id, name, slug, description, brief, status, budget_amount, remaining_budget_amount,
 				cpm_amount, max_payout_per_clip, currency_code, start_date, end_date
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'USD', $10, $11)
+			) VALUES ($1, $2, $3, regexp_replace(lower(btrim($3)), '[^a-z0-9]+', '-', 'g'), $4, $4, $5, $6, $7, $8, $9, 'USD', $10, $11)
 			ON CONFLICT (id) DO UPDATE SET
 				brand_id = EXCLUDED.brand_id,
 				name = EXCLUDED.name,
+				slug = EXCLUDED.slug,
 				description = EXCLUDED.description,
+				brief = EXCLUDED.brief,
 				status = EXCLUDED.status,
 				budget_amount = EXCLUDED.budget_amount,
 				remaining_budget_amount = EXCLUDED.remaining_budget_amount,

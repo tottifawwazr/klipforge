@@ -103,9 +103,22 @@ Status: Complete (verified 2026-07-11)
 
 ## Phase 3 — Campaign workflow
 
+Status: In progress
+
+### Phase 3A - Campaign management
+
+Status: Complete (verified 2026-07-11)
+
+- [x] Public campaign discovery with safe public representations, filtering, pagination, and allow-listed sorting.
+- [x] Brand campaign create, read, update, platform/requirement replacement, and database-backed ownership enforcement.
+- [x] Explicit publish, pause, resume, complete, cancel, and administrative cancellation transitions with audit history.
+- [x] Campaign slug, brief, and thumbnail schema migration with deterministic seed compatibility.
+- [x] PostgreSQL transaction, lifecycle, audit, and horizontal-access integration tests.
+
+### Phase 3B - Participation and submissions
+
 Status: Not started
 
-- Campaign lifecycle
 - Campaign participation
 - Clip submissions
 - Submission moderation

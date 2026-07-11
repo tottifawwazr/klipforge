@@ -2,7 +2,7 @@
 
 ## Scope
 
-Phase 2A provides the normalized PostgreSQL schema, reversible SQL migrations, and deterministic local-development fixtures. It does not implement authentication endpoints, JWTs, refresh-token rotation, RBAC middleware, dashboards, or payout processing.
+The normalized PostgreSQL schema now supports Phase 3A campaign management in addition to the Phase 2 identity, authentication, and authorization foundations. It does not implement participation, submission workflows, metrics, notifications, or payout processing.
 
 All identifiers are PostgreSQL UUIDs. Monetary values use `numeric`, never floating-point types. Statuses and platform values use text columns with `CHECK` constraints so future migrations can evolve values without PostgreSQL enum changes.
 
@@ -82,6 +82,7 @@ erDiagram
 - `campaign_participants` has a unique `(campaign_id, clipper_id)` pair.
 - `clip_submissions.content_url` is unique and must be trimmed.
 - Campaign budget, remaining budget, CPM, and maximum payout per clip are non-negative. Remaining budget cannot exceed total budget.
+- Campaign management adds a unique URL-safe `slug`, a bounded `brief`, and an optional HTTP(S) `thumbnail_url`; the API treats slugs as immutable after creation.
 - Campaign end date must be after start date.
 - Metric counts are non-negative `bigint` values.
 - A submission's `(participant_id, campaign_id)` is a composite foreign key to the matching campaign participant.
