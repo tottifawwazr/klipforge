@@ -42,3 +42,6 @@ Desktop.ini
 # Local tooling
 .cache/
 .eslintcache
+
+# Local AI development tooling
+.codex/
