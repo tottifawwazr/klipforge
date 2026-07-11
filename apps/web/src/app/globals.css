@@ -1,14 +1,81 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f9f7;
-  --foreground: #13231c;
+  --kf-color-canvas: #f7f9f7;
+  --kf-color-surface: #ffffff;
+  --kf-color-surface-subtle: #fafcfa;
+  --kf-color-surface-muted: #f1f5f2;
+  --kf-color-surface-inverse: #13231c;
+
+  --kf-color-foreground-strong: #10241b;
+  --kf-color-foreground: #13231c;
+  --kf-color-foreground-secondary: #53695f;
+  --kf-color-foreground-muted: #60746a;
+  --kf-color-foreground-inverse: #ffffff;
+
+  --kf-color-border-subtle: #e1e9e4;
+  --kf-color-border: #d9e4dd;
+  --kf-color-border-strong: #b9c9bf;
+  --kf-color-control-border: #82968b;
+
+  --kf-color-primary: #137a4b;
+  --kf-color-primary-hover: #0e6940;
+  --kf-color-primary-active: #0a5735;
+  --kf-color-primary-subtle: #eaf7ef;
+  --kf-color-primary-subtle-active: #d7f0e1;
+  --kf-color-primary-border: #b9d9c7;
+  --kf-color-primary-on-subtle: #11663f;
+
+  --kf-color-danger: #b42318;
+  --kf-color-danger-subtle: #fff1f0;
+  --kf-color-danger-border: #f4b8b2;
+  --kf-color-danger-on-subtle: #7a271a;
+
+  --kf-color-focus: #137a4b;
+  --kf-color-selection: #b9e6cb;
+
+  --kf-shadow-card: 0 12px 35px rgb(32 66 50 / 6%);
+  --kf-shadow-raised: 0 24px 70px rgb(32 66 50 / 12%);
+  --kf-shadow-primary: 0 10px 24px rgb(19 122 75 / 18%);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-canvas: var(--kf-color-canvas);
+  --color-surface: var(--kf-color-surface);
+  --color-surface-subtle: var(--kf-color-surface-subtle);
+  --color-surface-muted: var(--kf-color-surface-muted);
+  --color-surface-inverse: var(--kf-color-surface-inverse);
+
+  --color-foreground-strong: var(--kf-color-foreground-strong);
+  --color-foreground: var(--kf-color-foreground);
+  --color-foreground-secondary: var(--kf-color-foreground-secondary);
+  --color-foreground-muted: var(--kf-color-foreground-muted);
+  --color-foreground-inverse: var(--kf-color-foreground-inverse);
+
+  --color-border-subtle: var(--kf-color-border-subtle);
+  --color-border: var(--kf-color-border);
+  --color-border-strong: var(--kf-color-border-strong);
+  --color-control-border: var(--kf-color-control-border);
+
+  --color-primary: var(--kf-color-primary);
+  --color-primary-hover: var(--kf-color-primary-hover);
+  --color-primary-active: var(--kf-color-primary-active);
+  --color-primary-subtle: var(--kf-color-primary-subtle);
+  --color-primary-subtle-active: var(--kf-color-primary-subtle-active);
+  --color-primary-border: var(--kf-color-primary-border);
+  --color-primary-on-subtle: var(--kf-color-primary-on-subtle);
+
+  --color-danger: var(--kf-color-danger);
+  --color-danger-subtle: var(--kf-color-danger-subtle);
+  --color-danger-border: var(--kf-color-danger-border);
+  --color-danger-on-subtle: var(--kf-color-danger-on-subtle);
+
+  --color-focus: var(--kf-color-focus);
+
+  --font-sans:
+    var(--font-inter), Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
@@ -18,16 +85,73 @@
 
 html {
   scroll-behavior: smooth;
+  background: var(--kf-color-canvas);
 }
 
 body {
   margin: 0;
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--kf-color-canvas);
+  color: var(--kf-color-foreground);
   font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--kf-color-focus);
+  outline-offset: 3px;
 }
 
 ::selection {
-  background: #b9e6cb;
-  color: #10241b;
+  background: var(--kf-color-selection);
+  color: var(--kf-color-foreground-strong);
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 100;
+  transform: translateY(-180%);
+  border-radius: 0.75rem;
+  background: var(--kf-color-surface-inverse);
+  padding: 0.75rem 1rem;
+  color: var(--kf-color-foreground-inverse);
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: transform 150ms ease-out;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
