@@ -21,14 +21,15 @@ type authRateLimiter interface {
 }
 
 type AuthHandler struct {
-	service *auth.Service
-	limiter authRateLimiter
-	cfg     config.AuthConfig
-	logger  *slog.Logger
+	service       *auth.Service
+	authorization *AuthorizationMiddleware
+	limiter       authRateLimiter
+	cfg           config.AuthConfig
+	logger        *slog.Logger
 }
 
 func NewAuthHandler(service *auth.Service, limiter authRateLimiter, cfg config.AuthConfig, logger *slog.Logger) *AuthHandler {
-	return &AuthHandler{service, limiter, cfg, logger}
+	return &AuthHandler{service: service, authorization: NewAuthorizationMiddleware(service, logger), limiter: limiter, cfg: cfg, logger: logger}
 }
 
 func (h *AuthHandler) Routes() http.Handler {
@@ -38,7 +39,9 @@ func (h *AuthHandler) Routes() http.Handler {
 	r.Post("/refresh", h.rateLimited("refresh", h.cfg.RefreshRateLimit, h.refresh))
 	r.Post("/logout", h.logout)
 	r.Group(func(protected chi.Router) {
-		protected.Use(h.authenticate)
+		protected.Use(h.authorization.RequireAuthentication)
+		protected.Use(h.authorization.RequireActiveUser)
+		protected.Use(h.authorization.RequireActiveSession)
 		protected.Post("/logout-all", h.logoutAll)
 		protected.Get("/me", h.me)
 	})
@@ -121,7 +124,7 @@ func (h *AuthHandler) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) logoutAll(w http.ResponseWriter, r *http.Request) {
-	p, _ := principalFromContext(r.Context())
+	p, _ := auth.PrincipalFromContext(r.Context())
 	err := h.service.LogoutAll(r.Context(), p, requestIDFromContext(r.Context()), r.UserAgent(), remoteIP(r.RemoteAddr))
 	h.clearCookie(w)
 	if err != nil {
@@ -132,7 +135,7 @@ func (h *AuthHandler) logoutAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) me(w http.ResponseWriter, r *http.Request) {
-	p, _ := principalFromContext(r.Context())
+	p, _ := auth.PrincipalFromContext(r.Context())
 	user, err := h.service.CurrentUser(r.Context(), p)
 	if err != nil {
 		h.handleError(w, r, err)

@@ -173,6 +173,9 @@ func TestIntegrationLogoutAndLogoutAll(t *testing.T) {
 	if err := service.Logout(ctx, one.RefreshToken, "logout", "", "127.0.0.1"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := service.Authenticate(ctx, one.AccessToken); err != ErrSessionRevoked {
+		t.Fatalf("logged-out access token error=%v", err)
+	}
 	if err := service.Logout(ctx, one.RefreshToken, "logout-again", "", "127.0.0.1"); err != nil {
 		t.Fatal(err)
 	}

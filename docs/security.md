@@ -2,7 +2,7 @@
 
 ## Authentication boundary
 
-Phase 2B implements authentication only. Access tokens establish identity and expose a role for later authorization, but this phase does not enforce role permissions, campaign ownership, or resource-level access. Those controls belong to Phase 2C.
+Phase 2B establishes identity. Phase 2C separately enforces roles, current account/session state, and PostgreSQL-backed resource ownership. Role checks are reusable guards rather than handler-local conditionals.
 
 ## Passwords and login
 
@@ -17,6 +17,27 @@ Phase 2B implements authentication only. Access tokens establish identity and ex
 Access tokens are short-lived HS256 JWTs returned in JSON. The default lifetime is 15 minutes. The API requires and validates `sub`, `role`, `session_id`, `jti`, `iss`, `aud`, `iat`, and `exp`; it rejects malformed UUID claims, incorrect issuer or audience, expired tokens, invalid signatures, and every signing algorithm other than HS256.
 
 Protected endpoints receive the token as `Authorization: Bearer <access-token>`. Middleware also checks that the user remains active and the referenced database session still has an active refresh token. The future frontend must keep access tokens in memory, not local storage.
+
+The request context stores only a typed safe principal: user ID, role, session ID, JWT ID, and current account/session flags. Raw claims and tokens are not placed in context logs.
+
+## Authorization and ownership
+
+The only accepted roles are `ADMIN`, `BRAND`, and `CLIPPER`. Role values are validated at registration, JWT validation, authentication-context creation, middleware enforcement, and policy entry points.
+
+Ownership decisions query trusted PostgreSQL relationships with parameterized statements:
+
+- campaign `brand_id` for campaign management and participant/submission/payout visibility;
+- campaign participation `clipper_id` for participation and submission ownership;
+- payout participation and campaign relationships for clipper and brand visibility;
+- profile `user_id` for private profile access.
+
+Client-supplied owner IDs are never authorization evidence. Swapping a route resource ID therefore causes a new database ownership lookup rather than inheriting access from another request.
+
+Ownership failures normally return the same 404 response as a missing resource. This prevents callers from distinguishing another tenant's private resource from a nonexistent identifier. Pure role denials return 403. Missing/invalid identity and revoked sessions return 401; inactive accounts retain the existing 403 `USER_INACTIVE` response.
+
+The current identity schema models availability with `users.is_active`; it has no separate suspended status. A future suspension state must be incorporated into the same current-database account check before protected access.
+
+`ADMIN` exceptions are declared by individual policies. Administrators remain subject to authentication, current account state, and active-session checks. Policy evaluation alone does not create an audit entry; the future service performing a sensitive administrative mutation must write the durable audit record in the same business transaction. This avoids audit noise from ordinary reads and denied probes.
 
 ## Refresh sessions and rotation
 
@@ -43,6 +64,8 @@ The default cookie is `klipforge_refresh_token`, with `HttpOnly`, `SameSite=Lax`
 Login, registration, and refresh use IP-scoped Redis counters. Defaults are 10, 5, and 30 requests per one-minute window. If Redis is unavailable, authentication endpoints fail closed with `AUTH_SERVICE_UNAVAILABLE`; they do not bypass throttling.
 
 Request logging records method, route, status, duration, request ID, and remote IP. It never records request bodies, Authorization headers, Cookie headers, passwords, raw tokens, or token/password hashes. Audit metadata is deliberately limited to safe identifiers and outcomes.
+
+Authorization denials log only request ID, route, method, authenticated user ID, role, policy name, decision, and a safe reason code. Database error details are not exposed to clients. Authentication rate limits remain unchanged and execute on their existing public endpoints before authentication services.
 
 ## Secrets
 

@@ -9,7 +9,7 @@ KlipForge is a Docker Compose monorepo with these runtime services:
 - `postgres`: PostgreSQL 16 persistent local database.
 - `redis`: Redis 7 persistent local cache and coordination foundation.
 
-The API now exposes Phase 2B authentication under `/api/v1/auth` while retaining the Phase 1 health endpoints. Product and authorization handlers remain unimplemented.
+The API exposes authentication under `/api/v1/auth` while retaining the public health endpoints. Phase 2C adds reusable authorization guards and domain policy code, but intentionally exposes no incomplete product or test-only routes.
 
 ## Database architecture
 
@@ -35,7 +35,7 @@ The Compose `migrate` and `seed` services are intentionally one-shot tools. They
 - Redis is not a system of record and remains outside Phase 2A schema work.
 - Password values are stored only as bcrypt hashes in PostgreSQL fixtures; no secret values are added to `.env.example`.
 - Authentication uses thin HTTP handlers, an authentication service, password/token services, a PostgreSQL repository, and request-context middleware.
-- Role claims are identity context only in Phase 2B. Phase 2C must add explicit backend authorization and must not rely on frontend role visibility.
+- Authentication produces a typed safe principal. Authorization consumes that principal through reusable role/state guards and PostgreSQL-backed domain policies; frontend role visibility is never a security boundary.
 
 ## Authentication request flow
 
@@ -46,9 +46,20 @@ HTTP handler -> Redis rate limit -> authentication service
                                   -> audit_logs
 
 Bearer middleware -> validate JWT -> validate active user + session -> request context
+Request context   -> role/state guard -> ownership policy -> future product handler
 ```
 
 Refresh rotation locks the presented token row and performs replacement, revocation, and audit insertion in one PostgreSQL transaction. Session IDs remain stable across rotations; token family IDs provide lineage. See [`security.md`](./security.md) for the threat behavior and [`api.md`](./api.md) for the transport contract.
+
+## Middleware order
+
+Global middleware runs in this order: request ID, structured request logging, panic recovery, security headers, CORS, request-size limit, and request timeout. Route-local authentication then validates the bearer token and current database state, attaches the typed principal, and composes active-user, active-session, role, and resource-policy guards as required.
+
+Public health, registration, login, refresh, and cookie-based logout routes remain public by design. `/auth/me` and `/auth/logout-all` require authentication plus current account and session state. Product handlers added in later phases must use the policy guard rather than manually comparing route or request-body owner IDs.
+
+## Authorization package
+
+`internal/authorization` contains parameterized ownership repositories and policies for campaigns, participation, submissions, payouts, and profiles. Each policy declares its own administrator exception; no global administrator bypass exists. Inaccessible owned resources map to a safe not-found decision, while infrastructure errors remain internal.
 
 ## Operational workflow
 

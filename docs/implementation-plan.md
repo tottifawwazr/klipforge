@@ -4,7 +4,7 @@
 
 KlipForge will be built incrementally. Each phase must be formatted, linted, tested, and verified before the next phase begins. A feature is only marked complete after its runtime or automated verification passes.
 
-This run is limited to **Phase 1**. Phase 2 and later work remains intentionally unimplemented.
+Completed phases remain documented as verified baselines. Work proceeds only within the explicitly requested phase; later product phases remain intentionally unimplemented.
 
 ## Phase 1 — Foundation
 
@@ -69,7 +69,7 @@ The host has Node.js but no Go or Make installation. Phase 1 Go initialization a
 
 ## Phase 2 — Data and identity
 
-Status: In progress
+Status: Complete (verified 2026-07-11)
 
 ### Phase 2A — Schema, migrations, and development fixtures
 
@@ -93,11 +93,13 @@ Status: Complete (verified 2026-07-11)
 
 ### Phase 2C - Authorization
 
-Status: Not started
+Status: Complete (verified 2026-07-11)
 
-- Backend role authorization rules
-- Campaign ownership and resource-level authorization
-- Authorization integration tests
+- [x] Typed authenticated-principal context with JWT, account, and session identity.
+- [x] Reusable authentication, active-state, role, any-role, policy, and ownership guards.
+- [x] Explicit administrator exceptions and database-backed campaign, participation, submission, payout, and profile policies.
+- [x] Safe 401, 403, and enumeration-resistant 404 authorization behavior with structured denial logging.
+- [x] PostgreSQL ownership and horizontal privilege-escalation integration tests.
 
 ## Phase 3 — Campaign workflow
 

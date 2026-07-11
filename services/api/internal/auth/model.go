@@ -57,10 +57,13 @@ type Claims struct {
 }
 
 type Principal struct {
-	UserID    string
-	Email     string
-	Role      string
-	SessionID string
+	UserID        string
+	Email         string
+	Role          string
+	SessionID     string
+	TokenID       string
+	AccountActive bool
+	SessionActive bool
 }
 
 type AuditEvent struct {

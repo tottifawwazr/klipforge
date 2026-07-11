@@ -21,7 +21,7 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (TokenPair,
 	email := NormalizeEmail(input.Email)
 	name := strings.TrimSpace(input.FullName)
 	role := strings.ToUpper(strings.TrimSpace(input.Role))
-	if !ValidateEmail(email) || !ValidatePassword(input.Password) || name == "" || len(name) > 120 || (role != "BRAND" && role != "CLIPPER") {
+	if !ValidateEmail(email) || !ValidatePassword(input.Password) || name == "" || len(name) > 120 || (role != RoleBrand && role != RoleClipper) {
 		return TokenPair{}, ErrValidation
 	}
 	hash, err := s.passwords.Hash(input.Password)
@@ -126,7 +126,10 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (Principal, erro
 	if user.Role != claims.Role {
 		return Principal{}, ErrAccessInvalid
 	}
-	return Principal{user.ID, user.Email, user.Role, claims.SessionID}, nil
+	return Principal{
+		UserID: user.ID, Email: user.Email, Role: user.Role, SessionID: claims.SessionID,
+		TokenID: claims.JWTID, AccountActive: true, SessionActive: true,
+	}, nil
 }
 
 func (s *Service) CurrentUser(ctx context.Context, p Principal) (User, error) {

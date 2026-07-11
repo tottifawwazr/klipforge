@@ -75,7 +75,7 @@ func (s *TokenService) ParseAccessToken(raw string) (Claims, error) {
 	if claims.Subject == "" || claims.Role == "" || claims.SessionID == "" || claims.JWTID == "" ||
 		claims.Issuer != s.issuer || claims.Audience != s.audience || claims.IssuedAt <= 0 || claims.ExpiresAt <= 0 ||
 		!validUUID(claims.Subject) || !validUUID(claims.SessionID) || !validUUID(claims.JWTID) ||
-		(claims.Role != "ADMIN" && claims.Role != "BRAND" && claims.Role != "CLIPPER") {
+		!ValidRole(claims.Role) {
 		return Claims{}, ErrAccessInvalid
 	}
 	now := s.now().Unix()

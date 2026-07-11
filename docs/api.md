@@ -68,7 +68,51 @@ Success is `200 OK`:
 
 Protected endpoints distinguish `ACCESS_TOKEN_MISSING`, `ACCESS_TOKEN_INVALID`, `ACCESS_TOKEN_EXPIRED`, `SESSION_REVOKED`, and `USER_INACTIVE`.
 
+## Authorization
+
+Authentication establishes a typed principal containing the current user ID, validated role, session ID, JWT ID, account state, and session state. Authorization is a separate guard and policy layer. No Phase 2C test routes or incomplete product routes are exposed by the production router.
+
+### Status behavior
+
+- `401 Unauthorized`: authentication is missing or invalid, an access token expired, or its session was revoked.
+- `403 Forbidden`: identity is valid, but the role or business rule does not permit the operation. Codes include `FORBIDDEN` and `ROLE_NOT_ALLOWED`.
+- `404 Not Found`: the resource is absent or is intentionally hidden because the caller does not own it. Ownership policies normally use `RESOURCE_NOT_FOUND` to reduce identifier enumeration.
+
+Every error retains the standard request-ID envelope. Database errors and ownership identifiers are never returned.
+
+### Authorization matrix
+
+| Capability | ADMIN | BRAND | CLIPPER |
+| --- | --- | --- | --- |
+| Manage campaigns | Any campaign, explicit admin policy | Own campaigns only | Never |
+| View campaigns | Any campaign | Own campaigns | Public active campaigns |
+| Join campaigns | No automatic participation | Never | Active campaigns when rules permit |
+| View participants | Administrative access | Own campaigns | Own participation only |
+| Manage submissions | Moderation through admin policy | No creator editing | Own submission when status permits |
+| Review submissions | Any through moderation policy | Own campaigns only | Never |
+| View payouts | Any | Own campaign obligations | Own payouts only |
+| Process payouts | Only role permitted | Never | Never |
+| Private profiles | Administrative view | Self only | Self only |
+| Update profiles | Self only | Self only | Self only |
+
+Administrator access is explicit per policy; there is no blanket bypass.
+
+### Future route integration
+
+Product routes should compose the reusable guards and a database-backed policy without duplicating role checks:
+
+```go
+router.With(
+    authorization.RequireAuthentication,
+    authorization.RequireActiveUser,
+    authorization.RequireActiveSession,
+    authorization.RequireAnyRole(auth.RoleAdmin, auth.RoleBrand),
+    authorization.RequireOwnership("campaign.manage", campaignOwnershipCheck),
+).Patch("/campaigns/{campaignID}", handler)
+```
+
+The ownership check must pass the route resource ID to `Policies.CanManageCampaign`; it must never accept a client-supplied owner ID as proof of ownership.
+
 ## Token and cookie configuration
 
 Access tokens default to 15 minutes (`ACCESS_TOKEN_TTL`); refresh sessions default to 30 days (`REFRESH_TOKEN_TTL`). See [security.md](./security.md) and `.env.example` for issuer, audience, secret, cookie, bcrypt, and throttling configuration.
-
