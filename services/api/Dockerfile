@@ -20,6 +20,20 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /out/klipforge-api \
     ./cmd/api
 
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -buildvcs=false \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /out/klipforge-migrate \
+    ./cmd/migrate
+
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -buildvcs=false \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /out/klipforge-seed \
+    ./cmd/seed
+
 FROM alpine:3.21 AS runtime
 
 RUN apk add --no-cache ca-certificates \
@@ -27,6 +41,8 @@ RUN apk add --no-cache ca-certificates \
     && adduser -S -G klipforge klipforge
 
 COPY --from=build /out/klipforge-api /usr/local/bin/klipforge-api
+COPY --from=build /out/klipforge-migrate /usr/local/bin/klipforge-migrate
+COPY --from=build /out/klipforge-seed /usr/local/bin/klipforge-seed
 
 USER klipforge
 

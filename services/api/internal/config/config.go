@@ -24,6 +24,24 @@ type Config struct {
 	Database    DatabaseConfig
 	Redis       RedisConfig
 	Health      HealthConfig
+	Auth        AuthConfig
+}
+
+type AuthConfig struct {
+	JWTSecret          string
+	JWTIssuer          string
+	JWTAudience        string
+	AccessTokenTTL     time.Duration
+	RefreshTokenTTL    time.Duration
+	RefreshTokenPepper string
+	BcryptCost         int
+	CookieName         string
+	CookieDomain       string
+	CookieSecure       bool
+	LoginRateLimit     int64
+	RegisterRateLimit  int64
+	RefreshRateLimit   int64
+	RateLimitWindow    time.Duration
 }
 
 type HTTPConfig struct {
@@ -101,6 +119,37 @@ func load(lookup lookupFunc) (Config, error) {
 		return Config{}, err
 	}
 	dependencyTimeout, err := r.positiveDuration("HEALTH_DEPENDENCY_TIMEOUT", 2*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	accessTokenTTL, err := r.positiveDuration("ACCESS_TOKEN_TTL", 15*time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
+	refreshTokenTTL, err := r.positiveDuration("REFRESH_TOKEN_TTL", 30*24*time.Hour)
+	if err != nil {
+		return Config{}, err
+	}
+	if refreshTokenTTL <= accessTokenTTL {
+		return Config{}, fmt.Errorf("REFRESH_TOKEN_TTL must exceed ACCESS_TOKEN_TTL")
+	}
+	rateLimitWindow, err := r.positiveDuration("AUTH_RATE_LIMIT_WINDOW", time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
+	bcryptCost, err := r.positiveInt64("BCRYPT_COST", 12)
+	if err != nil || bcryptCost < 10 || bcryptCost > 15 {
+		return Config{}, fmt.Errorf("BCRYPT_COST must be between 10 and 15")
+	}
+	loginRateLimit, err := r.positiveInt64("AUTH_LOGIN_RATE_LIMIT", 10)
+	if err != nil {
+		return Config{}, err
+	}
+	registerRateLimit, err := r.positiveInt64("AUTH_REGISTER_RATE_LIMIT", 5)
+	if err != nil {
+		return Config{}, err
+	}
+	refreshRateLimit, err := r.positiveInt64("AUTH_REFRESH_RATE_LIMIT", 30)
 	if err != nil {
 		return Config{}, err
 	}
@@ -195,8 +244,29 @@ func load(lookup lookupFunc) (Config, error) {
 		return Config{}, err
 	}
 
+	environment := r.stringValue("development", "APP_ENV", "ENVIRONMENT")
+	jwtSecret := r.stringValue("development-only-jwt-secret-change-before-production", "JWT_SECRET")
+	refreshPepper := r.stringValue("development-only-refresh-pepper-change-before-production", "REFRESH_TOKEN_PEPPER")
+	if len(jwtSecret) < 32 {
+		return Config{}, fmt.Errorf("JWT_SECRET must contain at least 32 characters")
+	}
+	if len(refreshPepper) < 32 {
+		return Config{}, fmt.Errorf("REFRESH_TOKEN_PEPPER must contain at least 32 characters")
+	}
+	if strings.EqualFold(environment, "production") &&
+		(strings.HasPrefix(jwtSecret, "development-only-") || strings.HasPrefix(refreshPepper, "development-only-")) {
+		return Config{}, fmt.Errorf("production authentication secrets must be explicitly configured")
+	}
+	cookieSecure, err := r.boolValue("REFRESH_COOKIE_SECURE", strings.EqualFold(environment, "production"))
+	if err != nil {
+		return Config{}, err
+	}
+	if strings.EqualFold(environment, "production") && !cookieSecure {
+		return Config{}, fmt.Errorf("REFRESH_COOKIE_SECURE must be true in production")
+	}
+
 	return Config{
-		Environment: r.stringValue("development", "APP_ENV", "ENVIRONMENT"),
+		Environment: environment,
 		Version:     r.stringValue("dev", "APP_VERSION"),
 		LogLevel:    logLevel,
 		HTTP: HTTPConfig{
@@ -229,6 +299,22 @@ func load(lookup lookupFunc) (Config, error) {
 			WriteTimeout:       redisWriteTimeout,
 		},
 		Health: HealthConfig{DependencyTimeout: dependencyTimeout},
+		Auth: AuthConfig{
+			JWTSecret:          jwtSecret,
+			JWTIssuer:          r.stringValue("klipforge-api", "JWT_ISSUER"),
+			JWTAudience:        r.stringValue("klipforge-web", "JWT_AUDIENCE"),
+			AccessTokenTTL:     accessTokenTTL,
+			RefreshTokenTTL:    refreshTokenTTL,
+			RefreshTokenPepper: refreshPepper,
+			BcryptCost:         int(bcryptCost),
+			CookieName:         r.stringValue("klipforge_refresh_token", "REFRESH_COOKIE_NAME"),
+			CookieDomain:       r.stringValue("", "REFRESH_COOKIE_DOMAIN"),
+			CookieSecure:       cookieSecure,
+			LoginRateLimit:     loginRateLimit,
+			RegisterRateLimit:  registerRateLimit,
+			RefreshRateLimit:   refreshRateLimit,
+			RateLimitWindow:    rateLimitWindow,
+		},
 	}, nil
 }
 

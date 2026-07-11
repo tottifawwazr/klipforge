@@ -1,15 +1,15 @@
 # KlipForge
 
-KlipForge is a creator-campaign and short-form content analytics platform for brands, clippers, and platform administrators. This repository currently contains **Phase 1 only**: the monorepo foundation, local infrastructure, a Go API skeleton, and a Next.js web skeleton.
+KlipForge is a creator-campaign and short-form content analytics platform for brands, clippers, and platform administrators. The repository includes the Phase 1 foundation, Phase 2A database schema/fixtures, and Phase 2B backend authentication.
 
-## Phase 1 stack
+## Stack
 
 - Next.js with TypeScript, App Router, and Tailwind CSS in `apps/web`
 - Go HTTP API in `services/api`
 - PostgreSQL 16 and Redis 7
 - Docker Compose for a repeatable local environment
 
-Database migrations, seed data, authentication, authorization, and product features intentionally begin in later phases.
+Backend role/ownership authorization and product features remain intentionally deferred.
 
 ## Prerequisites
 
@@ -32,10 +32,11 @@ The checked-in values are local-development placeholders only. The important pub
 | Web | `http://localhost:3000` |
 | API | `http://localhost:8080` |
 | API health | `http://localhost:8080/api/v1/health` |
+| Auth API | `http://localhost:8080/api/v1/auth` |
 | PostgreSQL | `localhost:5432` |
 | Redis | `localhost:6379` |
 
-## Run Phase 1
+## Run locally
 
 Start only the infrastructure:
 
@@ -44,7 +45,7 @@ docker compose up -d postgres redis
 docker compose ps
 ```
 
-Build and start the full Phase 1 stack:
+Build and start the full stack:
 
 ```bash
 docker compose up --build
@@ -57,6 +58,15 @@ curl http://localhost:8080/api/v1/health
 ```
 
 Then open `http://localhost:3000`; the landing page performs a real API connectivity check.
+
+Apply the schema and local-only development fixtures before using authentication:
+
+```powershell
+docker compose --env-file .env.example --profile tools run --rm migrate up
+docker compose --env-file .env.example --profile tools run --rm seed
+```
+
+The authentication variables in `.env.example` are safe local placeholders. Production requires independently generated `JWT_SECRET` and `REFRESH_TOKEN_PEPPER`; token lifetimes, bcrypt cost, cookie settings, and Redis rate limits are also configurable there. See `docs/api.md` and `docs/security.md`.
 
 Verify the frontend-to-API bridge without a browser:
 
@@ -81,8 +91,8 @@ make test
 make build
 ```
 
-Equivalent application-specific commands can be run from `services/api` and `apps/web`. Migration and seed targets deliberately fail with a Phase 2 message so they cannot imply nonexistent functionality.
+Equivalent application-specific commands can be run from `services/api` and `apps/web`. Migration and seed commands are available through the Make targets and Docker Compose `tools` profile.
 
 ## Current limitations and next work
 
-Phase 2 will add the normalized database schema, migrations, development seed data, JWT authentication, refresh-token rotation, and backend-enforced role authorization. See `docs/implementation-plan.md` for the phased delivery plan.
+Phase 2C will add backend-enforced role and ownership authorization. Authentication frontend pages are also intentionally absent. See `docs/implementation-plan.md` for the phased delivery plan.

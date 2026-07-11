@@ -3,6 +3,7 @@ package dependency
 import (
 	"context"
 	"fmt"
+	"time"
 
 	redisclient "github.com/redis/go-redis/v9"
 
@@ -35,4 +36,14 @@ func (r *Redis) Ping(ctx context.Context) error {
 
 func (r *Redis) Close() error {
 	return r.client.Close()
+}
+
+func (r *Redis) Allow(ctx context.Context, key string, limit int64, window time.Duration) (bool, error) {
+	pipe := r.client.TxPipeline()
+	count := pipe.Incr(ctx, key)
+	pipe.Expire(ctx, key, window)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return false, err
+	}
+	return count.Val() <= limit, nil
 }

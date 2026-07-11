@@ -1,9 +1,9 @@
 COMPOSE := docker compose
 
-.PHONY: help dev infra-up infra-down up down ps logs build test lint format clean migrate-up migrate-down seed
+.PHONY: help dev infra-up infra-down up down ps logs build test lint format clean migrate-up migrate-down migrate-status seed db-reset
 
 help:
-	@echo "KlipForge Phase 1 commands:"
+	@echo "KlipForge development commands:"
 	@echo "  make dev         Build and run the complete Phase 1 stack"
 	@echo "  make infra-up    Start PostgreSQL and Redis in the background"
 	@echo "  make infra-down  Stop PostgreSQL and Redis"
@@ -16,6 +16,11 @@ help:
 	@echo "  make lint        Run current backend and frontend linters"
 	@echo "  make format      Format current backend and frontend sources"
 	@echo "  make clean       Stop containers and remove generated containers/networks"
+	@echo "  make migrate-up  Apply all pending PostgreSQL migrations"
+	@echo "  make migrate-down Roll back the most recently applied migration"
+	@echo "  make migrate-status Show applied and pending migrations"
+	@echo "  make seed        Insert deterministic local development seed data"
+	@echo "  make db-reset    Remove local Compose volumes, migrate, and seed"
 
 dev:
 	$(COMPOSE) up --build
@@ -56,6 +61,24 @@ format:
 clean:
 	$(COMPOSE) down --remove-orphans
 
-migrate-up migrate-down seed:
-	@echo "This target becomes available in Phase 2; no migrations or seed data exist in Phase 1."
-	@exit 1
+migrate-up:
+	$(COMPOSE) up -d postgres
+	$(COMPOSE) --profile tools run --rm migrate up
+
+migrate-down:
+	$(COMPOSE) up -d postgres
+	$(COMPOSE) --profile tools run --rm migrate down
+
+migrate-status:
+	$(COMPOSE) up -d postgres
+	$(COMPOSE) --profile tools run --rm migrate status
+
+seed:
+	$(COMPOSE) up -d postgres
+	$(COMPOSE) --profile tools run --rm seed
+
+db-reset:
+	$(COMPOSE) down --remove-orphans --volumes
+	$(COMPOSE) up -d postgres redis
+	$(COMPOSE) --profile tools run --rm migrate up
+	$(COMPOSE) --profile tools run --rm seed

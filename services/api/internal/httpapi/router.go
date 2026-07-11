@@ -11,7 +11,7 @@ import (
 	"github.com/klipforge/klipforge/services/api/internal/config"
 )
 
-func NewRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler) http.Handler {
+func NewRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandlers ...*AuthHandler) http.Handler {
 	router := chi.NewRouter()
 
 	router.Use(requestIDMiddleware)
@@ -25,6 +25,9 @@ func NewRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHand
 	router.Get("/healthz", healthHandler.Liveness)
 	router.Route("/api/v1", func(api chi.Router) {
 		api.Get("/health", healthHandler.Readiness)
+		if len(authHandlers) > 0 && authHandlers[0] != nil {
+			api.Mount("/auth", authHandlers[0].Routes())
+		}
 	})
 
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {

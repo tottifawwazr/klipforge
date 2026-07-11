@@ -69,13 +69,35 @@ The host has Node.js but no Go or Make installation. Phase 1 Go initialization a
 
 ## Phase 2 — Data and identity
 
+Status: In progress
+
+### Phase 2A — Schema, migrations, and development fixtures
+
+Status: Complete (verified 2026-07-11)
+
+- [x] Create ordered, reversible PostgreSQL migrations for identity, campaigns, submissions, metrics, payouts, notifications, audit logs, and idempotency keys.
+- [x] Add normalized UUID-keyed tables, foreign keys, indexes, status checks, monetary checks, and timestamp triggers.
+- [x] Add a Docker Compose migration runner with up, down, and status operations.
+- [x] Add idempotent local-development seed data with bcrypt-hashed fixture credentials.
+- [x] Document the schema, ERD, migration workflow, and local-only seed credentials.
+
+### Phase 2B - Authentication and sessions
+
+Status: Complete (verified 2026-07-11)
+
+- [x] Short-lived JWT access tokens with strict claim, issuer, audience, algorithm, signature, and expiry validation.
+- [x] Opaque hashed refresh tokens with transactional rotation, family/session tracking, and concurrent-refresh protection.
+- [x] Refresh-token reuse detection, audit logging, session revocation, logout, and logout-all.
+- [x] Registration, login, refresh, current-user, and authentication middleware endpoints.
+- [x] Bcrypt passwords, HttpOnly refresh cookies, structured errors, and Redis-backed authentication rate limiting.
+
+### Phase 2C - Authorization
+
 Status: Not started
 
-- Database migrations and normalized schema
-- Development seed data
-- JWT access and refresh token authentication
-- Refresh-token rotation and logout revocation
-- Backend role authorization
+- Backend role authorization rules
+- Campaign ownership and resource-level authorization
+- Authorization integration tests
 
 ## Phase 3 — Campaign workflow
 

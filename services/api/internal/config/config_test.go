@@ -30,11 +30,16 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Health.DependencyTimeout != 2*time.Second {
 		t.Fatalf("dependency timeout = %s, want 2s", cfg.Health.DependencyTimeout)
 	}
+	if cfg.Auth.AccessTokenTTL != 15*time.Minute || cfg.Auth.RefreshTokenTTL != 30*24*time.Hour || cfg.Auth.BcryptCost != 12 {
+		t.Fatalf("unexpected auth defaults: %#v", cfg.Auth)
+	}
 }
 
 func TestLoadOverrides(t *testing.T) {
 	cfg, err := load(mapLookup(map[string]string{
 		"APP_ENV":                   "production",
+		"JWT_SECRET":                "production-test-jwt-secret-with-at-least-32-characters",
+		"REFRESH_TOKEN_PEPPER":      "production-test-refresh-pepper-at-least-32-characters",
 		"APP_VERSION":               "1.2.3",
 		"LOG_LEVEL":                 "warn",
 		"HTTP_ADDR":                 "127.0.0.1:9090",
@@ -85,6 +90,10 @@ func TestLoadRejectsInvalidConfiguration(t *testing.T) {
 		{name: "minimum database pool exceeds maximum", env: map[string]string{"POSTGRES_MIN_CONNS": "11"}},
 		{name: "minimum Redis pool exceeds maximum", env: map[string]string{"REDIS_MIN_IDLE_CONNS": "11"}},
 		{name: "zero body limit", env: map[string]string{"HTTP_MAX_REQUEST_BODY_BYTES": "0"}},
+		{name: "short JWT secret", env: map[string]string{"JWT_SECRET": "short"}},
+		{name: "unsafe bcrypt cost", env: map[string]string{"BCRYPT_COST": "9"}},
+		{name: "refresh shorter than access", env: map[string]string{"ACCESS_TOKEN_TTL": "1h", "REFRESH_TOKEN_TTL": "30m"}},
+		{name: "insecure production cookie", env: map[string]string{"APP_ENV": "production", "JWT_SECRET": "production-test-jwt-secret-with-at-least-32-characters", "REFRESH_TOKEN_PEPPER": "production-test-refresh-pepper-at-least-32-characters", "REFRESH_COOKIE_SECURE": "false"}},
 	}
 
 	for _, test := range tests {
