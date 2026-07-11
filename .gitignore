@@ -1,0 +1,44 @@
+# Environment and local overrides
+.env
+.env.*
+!.env.example
+*.local
+
+# JavaScript / Next.js
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.turbo/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Go
+bin/
+tmp/
+*.test
+*.out
+coverage.html
+coverage.txt
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local tooling
+.cache/
+.eslintcache
