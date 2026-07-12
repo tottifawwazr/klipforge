@@ -104,7 +104,7 @@ func (r *Repository) CreateSubmission(ctx context.Context, s Submission, actor a
 		return Submission{}, err
 	}
 	defer tx.Rollback(ctx)
-	err = tx.QueryRow(ctx, `INSERT INTO clip_submissions(campaign_id,participant_id,content_url,platform,caption,status) VALUES($1,$2,$3,$4,$5,'PENDING') RETURNING id,campaign_id,participant_id,content_url,platform,caption,status,submitted_at,created_at,updated_at`, s.CampaignID, s.ParticipantID, s.ContentURL, s.Platform, s.Caption).Scan(&s.ID, &s.CampaignID, &s.ParticipantID, &s.ContentURL, &s.Platform, &s.Caption, &s.Status, &s.SubmittedAt, &s.CreatedAt, &s.UpdatedAt)
+	err = tx.QueryRow(ctx, `INSERT INTO clip_submissions(campaign_id,participant_id,content_url,platform,caption,status) VALUES($1,$2,$3,$4,$5,'PENDING') RETURNING id,campaign_id,participant_id,content_url,platform,caption,status,submitted_at,created_at,updated_at,reviewed_at,CASE WHEN status='REJECTED' THEN review_note END`, s.CampaignID, s.ParticipantID, s.ContentURL, s.Platform, s.Caption).Scan(&s.ID, &s.CampaignID, &s.ParticipantID, &s.ContentURL, &s.Platform, &s.Caption, &s.Status, &s.SubmittedAt, &s.CreatedAt, &s.UpdatedAt, &s.ReviewedAt, &s.RejectionReason)
 	if err != nil {
 		return Submission{}, mapWrite(err, ErrDuplicateURL)
 	}
@@ -119,7 +119,7 @@ func (r *Repository) CreateSubmission(ctx context.Context, s Submission, actor a
 func (r *Repository) Submission(ctx context.Context, id string) (Submission, string, string, error) {
 	var s Submission
 	var clipper, brand string
-	err := r.pool.QueryRow(ctx, `SELECT cs.id,cs.campaign_id,cs.participant_id,cs.content_url,cs.platform,cs.caption,cs.status,cs.submitted_at,cs.created_at,cs.updated_at,cp.clipper_id,c.brand_id FROM clip_submissions cs JOIN campaign_participants cp ON cp.id=cs.participant_id JOIN campaigns c ON c.id=cs.campaign_id WHERE cs.id=$1`, id).Scan(&s.ID, &s.CampaignID, &s.ParticipantID, &s.ContentURL, &s.Platform, &s.Caption, &s.Status, &s.SubmittedAt, &s.CreatedAt, &s.UpdatedAt, &clipper, &brand)
+	err := r.pool.QueryRow(ctx, `SELECT cs.id,cs.campaign_id,cs.participant_id,cs.content_url,cs.platform,cs.caption,cs.status,cs.submitted_at,cs.created_at,cs.updated_at,cs.reviewed_at,CASE WHEN cs.status='REJECTED' THEN cs.review_note END,cp.clipper_id,c.brand_id FROM clip_submissions cs JOIN campaign_participants cp ON cp.id=cs.participant_id JOIN campaigns c ON c.id=cs.campaign_id WHERE cs.id=$1`, id).Scan(&s.ID, &s.CampaignID, &s.ParticipantID, &s.ContentURL, &s.Platform, &s.Caption, &s.Status, &s.SubmittedAt, &s.CreatedAt, &s.UpdatedAt, &s.ReviewedAt, &s.RejectionReason, &clipper, &brand)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Submission{}, "", "", ErrSubmissionNotFound
 	}
@@ -131,7 +131,7 @@ func (r *Repository) UpdateSubmission(ctx context.Context, s Submission, actor a
 		return Submission{}, err
 	}
 	defer tx.Rollback(ctx)
-	err = tx.QueryRow(ctx, `UPDATE clip_submissions SET content_url=$2,platform=$3,caption=$4 WHERE id=$1 AND status='PENDING' RETURNING id,campaign_id,participant_id,content_url,platform,caption,status,submitted_at,created_at,updated_at`, s.ID, s.ContentURL, s.Platform, s.Caption).Scan(&s.ID, &s.CampaignID, &s.ParticipantID, &s.ContentURL, &s.Platform, &s.Caption, &s.Status, &s.SubmittedAt, &s.CreatedAt, &s.UpdatedAt)
+	err = tx.QueryRow(ctx, `UPDATE clip_submissions SET content_url=$2,platform=$3,caption=$4 WHERE id=$1 AND status='PENDING' RETURNING id,campaign_id,participant_id,content_url,platform,caption,status,submitted_at,created_at,updated_at,reviewed_at,CASE WHEN status='REJECTED' THEN review_note END`, s.ID, s.ContentURL, s.Platform, s.Caption).Scan(&s.ID, &s.CampaignID, &s.ParticipantID, &s.ContentURL, &s.Platform, &s.Caption, &s.Status, &s.SubmittedAt, &s.CreatedAt, &s.UpdatedAt, &s.ReviewedAt, &s.RejectionReason)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Submission{}, ErrNotEditable
 	}
@@ -179,7 +179,7 @@ func (r *Repository) ListSubmissions(ctx context.Context, clipperID, brandID, ca
 		dir = "ASC"
 	}
 	args = append(args, q.Limit, (q.Page-1)*q.Limit)
-	rows, err := r.pool.Query(ctx, `SELECT cs.id,cs.campaign_id,cs.participant_id,cs.content_url,cs.platform,cs.caption,cs.status,cs.submitted_at,cs.created_at,cs.updated_at FROM clip_submissions cs JOIN campaign_participants cp ON cp.id=cs.participant_id JOIN campaigns c ON c.id=cs.campaign_id WHERE `+filter+` ORDER BY `+sort+` `+dir+`,cs.id ASC LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
+	rows, err := r.pool.Query(ctx, `SELECT cs.id,cs.campaign_id,cs.participant_id,cs.content_url,cs.platform,cs.caption,cs.status,cs.submitted_at,cs.created_at,cs.updated_at,cs.reviewed_at,CASE WHEN cs.status='REJECTED' THEN cs.review_note END FROM clip_submissions cs JOIN campaign_participants cp ON cp.id=cs.participant_id JOIN campaigns c ON c.id=cs.campaign_id WHERE `+filter+` ORDER BY `+sort+` `+dir+`,cs.id ASC LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 	if err != nil {
 		return nil, Page{}, err
 	}
@@ -187,7 +187,7 @@ func (r *Repository) ListSubmissions(ctx context.Context, clipperID, brandID, ca
 	out := []Submission{}
 	for rows.Next() {
 		var s Submission
-		if err = rows.Scan(&s.ID, &s.CampaignID, &s.ParticipantID, &s.ContentURL, &s.Platform, &s.Caption, &s.Status, &s.SubmittedAt, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		if err = rows.Scan(&s.ID, &s.CampaignID, &s.ParticipantID, &s.ContentURL, &s.Platform, &s.Caption, &s.Status, &s.SubmittedAt, &s.CreatedAt, &s.UpdatedAt, &s.ReviewedAt, &s.RejectionReason); err != nil {
 			return nil, Page{}, err
 		}
 		out = append(out, s)

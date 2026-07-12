@@ -17,7 +17,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHand
 	if len(authHandlers) > 0 {
 		authHandler = authHandlers[0]
 	}
-	return newRouter(cfg, logger, healthHandler, authHandler, nil)
+	return newRouter(cfg, logger, healthHandler, authHandler, nil, nil, nil)
 }
 
 func NewRouterWithCampaigns(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler, participationHandlers ...*ParticipationHandler) http.Handler {
@@ -25,14 +25,14 @@ func NewRouterWithCampaigns(cfg config.Config, logger *slog.Logger, healthHandle
 	if len(participationHandlers) > 0 {
 		participationHandler = participationHandlers[0]
 	}
-	return newRouter(cfg, logger, healthHandler, authHandler, campaignHandler, participationHandler)
+	return newRouter(cfg, logger, healthHandler, authHandler, campaignHandler, participationHandler, nil)
 }
 
-func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler, participationHandlers ...*ParticipationHandler) http.Handler {
-	var participationHandler *ParticipationHandler
-	if len(participationHandlers) > 0 {
-		participationHandler = participationHandlers[0]
-	}
+func NewRouterWithModeration(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler, participationHandler *ParticipationHandler, moderationHandler *ModerationHandler) http.Handler {
+	return newRouter(cfg, logger, healthHandler, authHandler, campaignHandler, participationHandler, moderationHandler)
+}
+
+func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler, participationHandler *ParticipationHandler, moderationHandler *ModerationHandler) http.Handler {
 	router := chi.NewRouter()
 
 	router.Use(requestIDMiddleware)
@@ -59,13 +59,26 @@ func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHand
 				participationHandler.RegisterCampaignRoutes(campaignRoutes)
 				participationHandler.RegisterBrandRoutes(brandCampaignRoutes)
 			}
+			if moderationHandler != nil {
+				moderationHandler.RegisterBrandRoutes(brandCampaignRoutes)
+			}
 			api.Mount("/campaigns", campaignRoutes)
 			api.Mount("/brand/campaigns", brandCampaignRoutes)
 			api.Mount("/admin/campaigns", campaignHandler.AdminRoutes())
 		}
+		if participationHandler != nil || moderationHandler != nil {
+			adminRoutes := chi.NewRouter()
+			adminRoutes.Use(authHandler.Authorization().RequireAuthentication, authHandler.Authorization().RequireActiveUser, authHandler.Authorization().RequireActiveSession, authHandler.Authorization().RequireRole(auth.RoleAdmin))
+			if participationHandler != nil {
+				participationHandler.RegisterAdminRoutes(adminRoutes)
+			}
+			if moderationHandler != nil {
+				moderationHandler.RegisterAdminRoutes(adminRoutes)
+			}
+			api.Mount("/admin", adminRoutes)
+		}
 		if participationHandler != nil {
 			api.Mount("/clipper", participationHandler.ClipperRoutes())
-			api.Mount("/admin", participationHandler.AdminRoutes())
 		}
 	})
 

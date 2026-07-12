@@ -83,6 +83,16 @@ Submission URLs are parsed but never requested by the API. Validation permits HT
 
 Private CLIPPER and BRAND reads verify trusted ownership relationships for every route ID. Cross-clipper reads/updates and unrelated-brand campaign paths produce safe not-found responses. ADMIN inspection is an explicit route family and still requires current authenticated account and session state; it does not grant participation or submission-creation capability. Phase 3B provides no moderation mutations.
 
+## Submission moderation
+
+Phase 3C exposes only explicit approve, reject, and flag operations. Generic CLIPPER submission updates remain restricted to safe fields while status is `PENDING`; status, reviewer, review time, reason, metric, and payout fields never come from the client.
+
+BRAND moderation derives ownership from `campaigns.brand_id` and verifies that both the route campaign and locked submission refer to the same trusted campaign. Unrelated-brand access and route relationship mismatches use enumeration-resistant not-found responses. ADMIN actions are explicit and retain authentication, active-account, active-session, transition, reason, and data-integrity enforcement.
+
+Each decision obtains a PostgreSQL row lock, checks the current state after lock acquisition, updates only from that state, and writes the audit event in the same transaction. This prevents two moderators from producing conflicting reviewer fields or duplicate successful audits. Failed audit insertion rolls back the status change. Approved and rejected states are terminal; flagged submissions may resolve only to approved or rejected.
+
+Review and flag reasons are normalized plain text with a 1,000-character limit. They are never interpreted as HTML. CLIPPER responses expose a safe reason only for rejected submissions; unresolved flag notes and moderator identity remain inside protected moderation representations. Submitted URLs are parsed and revalidated without server-side fetching before approval or rejection.
+
 ## Secrets
 
 `JWT_SECRET` and `REFRESH_TOKEN_PEPPER` must each contain at least 32 characters and must be independently generated. Development fallback values are rejected when `APP_ENV=production`. No production secrets belong in committed files.

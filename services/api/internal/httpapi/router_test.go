@@ -94,6 +94,15 @@ func TestSharedBrandRoutesRegisterAfterExistingRoutes(t *testing.T) {
 
 	NewCampaignHandler(nil, authorization, nil).RegisterBrandRoutes(router)
 	NewParticipationHandler(nil, authorization).RegisterBrandRoutes(router)
+	NewModerationHandler(nil, authorization, slog.Default()).RegisterBrandRoutes(router)
+}
+
+func TestSharedAdminRoutesRegisterTogether(t *testing.T) {
+	router := chi.NewRouter()
+	authorization := &AuthorizationMiddleware{}
+
+	NewParticipationHandler(nil, authorization).RegisterAdminRoutes(router)
+	NewModerationHandler(nil, authorization, slog.Default()).RegisterAdminRoutes(router)
 }
 
 func serveTestRequest(report health.Report, method, target string, mutate func(*http.Request)) *httptest.ResponseRecorder {

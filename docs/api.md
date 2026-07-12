@@ -88,8 +88,8 @@ Every error retains the standard request-ID envelope. Database errors and owners
 | View campaigns | Any campaign | Own campaigns | Public active campaigns |
 | Join campaigns | No automatic participation | Never | Active campaigns when rules permit |
 | View participants | Inspection endpoints | Own campaigns | Own participation only |
-| Manage submissions | Inspection endpoints; no moderation in Phase 3B | View own campaign submissions | Own PENDING submission only |
-| Review submissions | Any through moderation policy | Own campaigns only | Never |
+| Manage submissions | Explicit moderation endpoints | Moderate own campaign submissions | Own PENDING submission fields only |
+| Review submissions | Cross-campaign administration | Own campaigns only | Never |
 | View payouts | Any | Own campaign obligations | Own payouts only |
 | Process payouts | Only role permitted | Never | Never |
 | Private profiles | Administrative view | Self only | Self only |
@@ -176,3 +176,44 @@ Submission lists accept `campaign_id`, `platform`, `status`, `page`, `limit` (ma
 Supported platforms are `TIKTOK`, `INSTAGRAM`, and `YOUTUBE`. URLs must be HTTPS, have no embedded credentials or port, match the selected platform's official host family, and contain a path. The API lowercases the host, removes query strings/fragments and trailing path slashes, and stores the resulting canonical URL. The global unique URL constraint rejects duplicate content after normalization. The API never fetches or scrapes submitted URLs.
 
 Joining, creating a submission, and updating a submission write `campaign.joined`, `submission.created`, and `submission.updated` audit records respectively in the same transaction as the business write. Private ownership failures use a 404 response; missing authentication/session state uses 401 and pure role denials use 403. `CAMPAIGN_NOT_ACTIVE`, `CAMPAIGN_NOT_STARTED`, `CAMPAIGN_ENDED`, `SUBMISSION_REQUIRES_PARTICIPATION`, `SUBMISSION_DUPLICATE_URL`, `SUBMISSION_INVALID_URL`, `SUBMISSION_INVALID_PLATFORM`, `SUBMISSION_PLATFORM_NOT_ALLOWED`, and `SUBMISSION_NOT_EDITABLE` are the relevant Phase 3B domain errors.
+
+## Submission moderation (Phase 3C)
+
+All moderation routes require authentication, an active account, an active session, and the route-specific BRAND or ADMIN role. Moderator IDs, review timestamps, target statuses, metrics, and payout fields are never accepted from request bodies.
+
+### Brand queue and actions
+
+- `GET /api/v1/brand/campaigns/{campaignID}/moderation/submissions`
+- `GET /api/v1/brand/campaigns/{campaignID}/moderation/submissions/{submissionID}`
+- `POST /api/v1/brand/campaigns/{campaignID}/submissions/{submissionID}/approve`
+- `POST /api/v1/brand/campaigns/{campaignID}/submissions/{submissionID}/reject`
+- `POST /api/v1/brand/campaigns/{campaignID}/submissions/{submissionID}/flag`
+
+The BRAND must own the route campaign, and the submission must belong to that exact campaign. Cross-brand and campaign/submission mismatches return a safe 404. The default brand queue contains unresolved `PENDING` and `FLAGGED` submissions, ordered by oldest `submitted_at` first.
+
+### Administrative moderation
+
+- `GET /api/v1/admin/moderation/submissions`
+- `GET /api/v1/admin/moderation/submissions/{submissionID}`
+- `POST /api/v1/admin/submissions/{submissionID}/approve`
+- `POST /api/v1/admin/submissions/{submissionID}/reject`
+- `POST /api/v1/admin/submissions/{submissionID}/flag`
+
+ADMIN queue access spans campaigns but remains subject to current account/session checks and the same state machine. ADMIN actions do not bypass transition, reason, URL, or persistence rules.
+
+Queue parameters are `page`, `limit` (maximum 100), `status`, `platform`, `search`, `submitted_from`, `submitted_to`, `reviewed_from`, `reviewed_to`, `sort`, and `direction`. ADMIN additionally supports `campaign_id` and `brand_id`. Search covers safe clipper display names, canonical content URLs, and captions. Sort is limited to `submitted_at`, `reviewed_at`, `created_at`, `status`, or `platform`, with submission ID as a stable secondary order.
+
+### Transition and reason rules
+
+| Current status | Approve | Reject | Flag |
+| --- | --- | --- | --- |
+| `PENDING` | `APPROVED` | `REJECTED` | `FLAGGED` |
+| `FLAGGED` | `APPROVED` | `REJECTED` | Not allowed |
+| `APPROVED` | Not allowed | Not allowed | Not allowed |
+| `REJECTED` | Not allowed | Not allowed | Not allowed |
+
+Reject and flag bodies are `{"reason":"plain text"}`. The normalized reason must contain non-whitespace text and be at most 1,000 characters. Approval accepts no fields, clears any prior flag note, and stores no reason. Unknown JSON fields and trailing JSON values are rejected. A CLIPPER sees `rejection_reason` only for a `REJECTED` submission; flag notes and internal moderator IDs are not exposed through CLIPPER submission responses.
+
+Moderation locks the submission row, verifies the current state and trusted campaign relationship, conditionally updates the status, records the authenticated reviewer and database timestamp, and inserts the audit event in one transaction. Concurrent decisions produce one success; later or losing requests receive a 409 such as `SUBMISSION_ALREADY_REVIEWED`, `SUBMISSION_INVALID_TRANSITION`, or `MODERATION_CONFLICT`. Audit actions are `submission.approved`, `submission.rejected`, `submission.flagged`, and `submission.flag_resolved`.
+
+Moderation does not fetch submitted URLs and does not perform metrics verification, social-platform integration, notifications, analytics, leaderboards, or payout work. Those capabilities remain deferred beyond Phase 3C.

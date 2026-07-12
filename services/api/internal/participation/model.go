@@ -11,16 +11,18 @@ type Participation struct {
 	CreatedAt  time.Time  `json:"created_at"`
 }
 type Submission struct {
-	ID            string    `json:"id"`
-	CampaignID    string    `json:"campaign_id"`
-	ParticipantID string    `json:"participant_id"`
-	Platform      string    `json:"platform"`
-	ContentURL    string    `json:"content_url"`
-	Caption       string    `json:"caption"`
-	Status        string    `json:"status"`
-	SubmittedAt   time.Time `json:"submitted_at"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID              string     `json:"id"`
+	CampaignID      string     `json:"campaign_id"`
+	ParticipantID   string     `json:"participant_id"`
+	Platform        string     `json:"platform"`
+	ContentURL      string     `json:"content_url"`
+	Caption         string     `json:"caption"`
+	Status          string     `json:"status"`
+	SubmittedAt     time.Time  `json:"submitted_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+	ReviewedAt      *time.Time `json:"reviewed_at,omitempty"`
+	RejectionReason *string    `json:"rejection_reason,omitempty"`
 }
 type Page struct {
 	Page       int `json:"page"`

@@ -139,7 +139,7 @@ func TestParticipationAndSubmissionIntegration(t *testing.T) {
 	if _, err = service.Update(ctx, clipper, submission.ID, UpdateInput{}); err != ErrInvalidQuery {
 		t.Fatalf("empty update error = %v", err)
 	}
-	if _, err = pool.Exec(ctx, `UPDATE clip_submissions SET status='APPROVED' WHERE id=$1`, submission.ID); err != nil {
+	if _, err = pool.Exec(ctx, `UPDATE clip_submissions SET status='APPROVED',reviewed_at=NOW(),reviewed_by_user_id=$2 WHERE id=$1`, submission.ID, participationSeedAdmin); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = service.Update(ctx, clipper, submission.ID, UpdateInput{Caption: &caption}); err != ErrNotEditable {

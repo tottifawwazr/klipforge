@@ -336,3 +336,7 @@ func normalizeURL(raw, platform string) (string, error) {
 	}
 	return u.String(), nil
 }
+
+func CanonicalContentURL(raw, platform string) (string, error) {
+	return normalizeURL(raw, platform)
+}

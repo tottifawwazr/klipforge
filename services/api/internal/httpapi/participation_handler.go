@@ -45,11 +45,14 @@ func (h *ParticipationHandler) BrandRoutes() http.Handler {
 func (h *ParticipationHandler) AdminRoutes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(h.authorization.RequireAuthentication, h.authorization.RequireActiveUser, h.authorization.RequireActiveSession, h.authorization.RequireRole(auth.RoleAdmin))
+	h.RegisterAdminRoutes(r)
+	return r
+}
+func (h *ParticipationHandler) RegisterAdminRoutes(r chi.Router) {
 	r.Get("/participations", h.adminParticipations)
 	r.Get("/participations/{participationID}", h.adminParticipation)
 	r.Get("/submissions", h.adminSubmissions)
 	r.Get("/submissions/{submissionID}", h.adminSubmission)
-	return r
 }
 func (h *ParticipationHandler) RegisterBrandRoutes(r chi.Router) {
 	r.Get("/{campaignID}/participants", h.brandParticipants)

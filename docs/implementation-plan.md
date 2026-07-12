@@ -126,10 +126,13 @@ Status: Complete (verified 2026-07-12)
 
 ### Phase 3C - Submission moderation
 
-Status: Not started
+Status: Complete (verified 2026-07-12)
 
-- Approval, rejection, flagging, and review notes.
-- Any resubmission or withdrawal policy that needs a new durable status.
+- [x] Brand-owned and administrative moderation queues with safe filters, search, pagination, and sorting.
+- [x] Explicit approval, rejection, flagging, and flagged-resolution transitions.
+- [x] Reviewer identity, timestamps, normalized reasons, and transactional audit logging.
+- [x] PostgreSQL row-lock concurrency protection and ownership integration tests.
+- [x] Reversible migration `000008_submission_moderation_constraints`, seed compatibility, API build, and live endpoint verification.
 
 ## Phase 4 — Metrics and analytics
 

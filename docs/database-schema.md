@@ -2,7 +2,7 @@
 
 ## Scope
 
-The normalized PostgreSQL schema supports Phase 3B campaign participation and clip-submission workflows in addition to the Phase 2 identity and Phase 3A campaign-management foundations. Metrics, notification delivery, payout processing, and submission moderation workflows remain unimplemented.
+The normalized PostgreSQL schema supports Phase 3C submission moderation in addition to the Phase 2 identity and Phase 3A/3B campaign, participation, and submission foundations. Metrics, notification delivery, analytics, and payout processing remain unimplemented.
 
 All identifiers are PostgreSQL UUIDs. Monetary values use `numeric`, never floating-point types. Statuses and platform values use text columns with `CHECK` constraints so future migrations can evolve values without PostgreSQL enum changes.
 
@@ -82,6 +82,8 @@ erDiagram
 - `campaign_participants` has a unique `(campaign_id, clipper_id)` pair.
 - `clip_submissions.content_url` is unique and must be trimmed.
 - Migration `000007_submission_caption` adds a non-null `clip_submissions.caption` with an empty-string default for existing rows and a 2,200-character maximum. Its down migration drops the check and column in reverse order.
+- Migration `000008_submission_moderation_constraints` limits `review_note` to 1,000 characters, requires pending rows to remain unreviewed, requires review timestamps for reviewed states, requires reasons for rejected/flagged states, and clears reasons for approved states. Reviewer deletion may set the reviewer ID to null while preserving the historical timestamp and audit actor snapshot.
+- The moderation queue index orders unresolved and historical work by status, submitted time, and stable submission ID.
 - Campaign budget, remaining budget, CPM, and maximum payout per clip are non-negative. Remaining budget cannot exceed total budget.
 - Campaign management adds a unique URL-safe `slug`, a bounded `brief`, and an optional HTTP(S) `thumbnail_url`; the API treats slugs as immutable after creation.
 - Campaign end date must be after start date.

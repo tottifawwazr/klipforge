@@ -73,6 +73,12 @@ Phase 3B adds `internal/participation`, which keeps HTTP transport, eligibility/
 
 The service reads trusted campaign and participant relationships before writes and the repository performs the business insert/update and audit insert in one transaction. PostgreSQL remains the authority for duplicate membership, duplicate canonical content URL, participant/campaign pairing, and campaign-platform validity. URL validation is pure parsing and normalization; the API does not fetch creator URLs.
 
+## Moderation module
+
+Phase 3C adds `internal/moderation` with queue/query models, allow-listed validation, role and ownership service rules, row-locking PostgreSQL transitions, safe response models, and moderation-specific errors. A shared service powers both BRAND and ADMIN handlers so state and concurrency behavior cannot diverge by route family.
+
+Brand routes reuse the protected `/brand/campaigns` router. Administrative queues and actions share the protected `/admin` router with Phase 3B inspection endpoints. Handlers decode strict JSON and log only safe operation identifiers and outcomes. The repository locks the submission, verifies campaign ownership and route relationships, applies the transition, sets reviewer context, and appends an audit record in one transaction.
+
 ## Operational workflow
 
 Use Docker Compose tool-profile commands or the matching Make targets:
