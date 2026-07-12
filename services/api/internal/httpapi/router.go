@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/klipforge/klipforge/services/api/internal/auth"
 	"github.com/klipforge/klipforge/services/api/internal/config"
 )
 
@@ -19,11 +20,19 @@ func NewRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHand
 	return newRouter(cfg, logger, healthHandler, authHandler, nil)
 }
 
-func NewRouterWithCampaigns(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler) http.Handler {
-	return newRouter(cfg, logger, healthHandler, authHandler, campaignHandler)
+func NewRouterWithCampaigns(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler, participationHandlers ...*ParticipationHandler) http.Handler {
+	var participationHandler *ParticipationHandler
+	if len(participationHandlers) > 0 {
+		participationHandler = participationHandlers[0]
+	}
+	return newRouter(cfg, logger, healthHandler, authHandler, campaignHandler, participationHandler)
 }
 
-func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler) http.Handler {
+func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler, participationHandlers ...*ParticipationHandler) http.Handler {
+	var participationHandler *ParticipationHandler
+	if len(participationHandlers) > 0 {
+		participationHandler = participationHandlers[0]
+	}
 	router := chi.NewRouter()
 
 	router.Use(requestIDMiddleware)
@@ -41,9 +50,22 @@ func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHand
 			api.Mount("/auth", authHandler.Routes())
 		}
 		if campaignHandler != nil {
-			api.Mount("/campaigns", campaignHandler.PublicRoutes())
-			api.Mount("/brand/campaigns", campaignHandler.BrandRoutes())
+			campaignRoutes := chi.NewRouter()
+			campaignHandler.RegisterPublicRoutes(campaignRoutes)
+			brandCampaignRoutes := chi.NewRouter()
+			brandCampaignRoutes.Use(authHandler.Authorization().RequireAuthentication, authHandler.Authorization().RequireActiveUser, authHandler.Authorization().RequireActiveSession, authHandler.Authorization().RequireRole(auth.RoleBrand))
+			campaignHandler.RegisterBrandRoutes(brandCampaignRoutes)
+			if participationHandler != nil {
+				participationHandler.RegisterCampaignRoutes(campaignRoutes)
+				participationHandler.RegisterBrandRoutes(brandCampaignRoutes)
+			}
+			api.Mount("/campaigns", campaignRoutes)
+			api.Mount("/brand/campaigns", brandCampaignRoutes)
 			api.Mount("/admin/campaigns", campaignHandler.AdminRoutes())
+		}
+		if participationHandler != nil {
+			api.Mount("/clipper", participationHandler.ClipperRoutes())
+			api.Mount("/admin", participationHandler.AdminRoutes())
 		}
 	})
 

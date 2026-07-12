@@ -87,8 +87,8 @@ Every error retains the standard request-ID envelope. Database errors and owners
 | Manage campaigns | Any campaign, explicit admin policy | Own campaigns only | Never |
 | View campaigns | Any campaign | Own campaigns | Public active campaigns |
 | Join campaigns | No automatic participation | Never | Active campaigns when rules permit |
-| View participants | Administrative access | Own campaigns | Own participation only |
-| Manage submissions | Moderation through admin policy | No creator editing | Own submission when status permits |
+| View participants | Inspection endpoints | Own campaigns | Own participation only |
+| Manage submissions | Inspection endpoints; no moderation in Phase 3B | View own campaign submissions | Own PENDING submission only |
 | Review submissions | Any through moderation policy | Own campaigns only | Never |
 | View payouts | Any | Own campaign obligations | Own payouts only |
 | Process payouts | Only role permitted | Never | Never |
@@ -151,3 +151,28 @@ Active ADMIN users may use `GET /api/v1/admin/campaigns`, `GET /api/v1/admin/cam
 | COMPLETED/CANCELLED | none | terminal |
 
 Publishing and resuming require valid campaign content, a usable positive remaining budget, an unexpired date range, and at least one allowed platform. Every create, update, transition, and administrative cancellation creates a safe audit record.
+
+## Participation and submissions (Phase 3B)
+
+All Phase 3B routes require a valid bearer token, an active account, and an active session. The server derives both the participant and submission owner from that token; client-provided ownership, status, moderation, metric, payout, and timestamp fields are ignored because they are not accepted by the request models.
+
+### Participation
+
+- `POST /api/v1/campaigns/{campaignID}/join` is available only to CLIPPER users. It creates an `ACCEPTED` membership for an ACTIVE campaign only after its start date and before its end date. A repeat request returns `409 CAMPAIGN_ALREADY_JOINED`; the database unique pair `(campaign_id, clipper_id)` remains the final duplicate guard.
+- `GET /api/v1/clipper/campaigns` lists only the caller's memberships. `campaign_id`, participant `status`, `page`, `limit` (maximum 100), `sort` (`created_at`, `joined_at`, `status`), and `direction` (`asc`, `desc`) are supported.
+- `GET /api/v1/clipper/campaigns/{campaignID}/participation` returns only the caller's membership.
+- `GET /api/v1/brand/campaigns/{campaignID}/participants` is limited to the owning BRAND and supports `status`, pagination, and the same participation sort fields.
+- `GET /api/v1/admin/participations` and `GET /api/v1/admin/participations/{participationID}` provide explicit ADMIN inspection only. They do not make an administrator a participant.
+
+### Clip submissions
+
+- `POST /api/v1/campaigns/{campaignID}/submissions` creates a `PENDING` submission for an accepted CLIPPER participant in an eligible ACTIVE campaign.
+- `GET /api/v1/clipper/submissions`, `GET /api/v1/clipper/submissions/{submissionID}`, and `PATCH /api/v1/clipper/submissions/{submissionID}` are owner-only routes. A patch may contain only `platform`, `content_url`, and/or `caption`; at least one is required and the submission must still be `PENDING`.
+- `GET /api/v1/brand/campaigns/{campaignID}/submissions` and `GET /api/v1/brand/campaigns/{campaignID}/submissions/{submissionID}` are restricted to the campaign-owning BRAND. A submission ID under an unrelated campaign path is hidden as not found.
+- `GET /api/v1/admin/submissions` and `GET /api/v1/admin/submissions/{submissionID}` provide explicit ADMIN inspection. No approval, rejection, flagging, or other moderation route exists in this phase.
+
+Submission lists accept `campaign_id`, `platform`, `status`, `page`, `limit` (maximum 100), `sort` (`submitted_at`, `created_at`, `updated_at`, `status`), and `direction` (`asc`, `desc`). Results use a stable ID secondary order and include `pagination` with `page`, `limit`, `total_items`, and `total_pages`.
+
+Supported platforms are `TIKTOK`, `INSTAGRAM`, and `YOUTUBE`. URLs must be HTTPS, have no embedded credentials or port, match the selected platform's official host family, and contain a path. The API lowercases the host, removes query strings/fragments and trailing path slashes, and stores the resulting canonical URL. The global unique URL constraint rejects duplicate content after normalization. The API never fetches or scrapes submitted URLs.
+
+Joining, creating a submission, and updating a submission write `campaign.joined`, `submission.created`, and `submission.updated` audit records respectively in the same transaction as the business write. Private ownership failures use a 404 response; missing authentication/session state uses 401 and pure role denials use 403. `CAMPAIGN_NOT_ACTIVE`, `CAMPAIGN_NOT_STARTED`, `CAMPAIGN_ENDED`, `SUBMISSION_REQUIRES_PARTICIPATION`, `SUBMISSION_DUPLICATE_URL`, `SUBMISSION_INVALID_URL`, `SUBMISSION_INVALID_PLATFORM`, `SUBMISSION_PLATFORM_NOT_ALLOWED`, and `SUBMISSION_NOT_EDITABLE` are the relevant Phase 3B domain errors.

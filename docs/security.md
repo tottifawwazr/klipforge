@@ -73,6 +73,16 @@ Campaign ownership is always derived from the authenticated brand and verified f
 
 Campaign state changes are explicit routes, not a generic writable status field. Campaign creation, updates, platform/requirement replacement, lifecycle transition, and the associated audit record occur in a database transaction. Decimal monetary values are handled as validated decimal strings and PostgreSQL `numeric` values, never binary floating point.
 
+## Participation and submissions
+
+Participation and submission routes compose the existing authentication, active-user, active-session, and role middleware. A CLIPPER's user ID is always taken from the verified principal; request bodies cannot select a participant, clipper, reviewer, status, metrics, payout, or timestamp value.
+
+Membership eligibility is checked against the trusted campaign record: only an ACTIVE campaign in its date range is joinable or accepts new/updated content. PostgreSQL enforces one membership per `(campaign_id, clipper_id)`, the submission-to-participant/campaign relationship, allowed campaign platform, and globally unique content URL. Repository writes include their audit record in the same transaction, so an audit failure rolls back the membership or submission.
+
+Submission URLs are parsed but never requested by the API. Validation permits HTTPS only, rejects credentials and explicit ports, matches a selected supported-platform host family, and canonicalizes host/path before the unique check. This reduces duplicate and SSRF exposure without introducing scraping or arbitrary server-side fetches.
+
+Private CLIPPER and BRAND reads verify trusted ownership relationships for every route ID. Cross-clipper reads/updates and unrelated-brand campaign paths produce safe not-found responses. ADMIN inspection is an explicit route family and still requires current authenticated account and session state; it does not grant participation or submission-creation capability. Phase 3B provides no moderation mutations.
+
 ## Secrets
 
 `JWT_SECRET` and `REFRESH_TOKEN_PEPPER` must each contain at least 32 characters and must be independently generated. Development fallback values are rejected when `APP_ENV=production`. No production secrets belong in committed files.

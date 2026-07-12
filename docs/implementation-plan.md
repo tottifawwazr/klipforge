@@ -117,11 +117,19 @@ Status: Complete (verified 2026-07-11)
 
 ### Phase 3B - Participation and submissions
 
+Status: Complete (verified 2026-07-12)
+
+- [x] Campaign participation and self-service membership reads.
+- [x] Clip submission creation, ownership reads, safe PENDING updates, URL validation, and audit logging.
+- [x] Brand and explicit admin inspection routes with PostgreSQL ownership checks.
+- [x] Migration `000007_submission_caption`, deterministic seed, rollback, PostgreSQL integration, API build, and live endpoint verification.
+
+### Phase 3C - Submission moderation
+
 Status: Not started
 
-- Campaign participation
-- Clip submissions
-- Submission moderation
+- Approval, rejection, flagging, and review notes.
+- Any resubmission or withdrawal policy that needs a new durable status.
 
 ## Phase 4 — Metrics and analytics
 

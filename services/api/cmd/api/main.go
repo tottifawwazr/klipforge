@@ -16,6 +16,7 @@ import (
 	"github.com/klipforge/klipforge/services/api/internal/dependency"
 	"github.com/klipforge/klipforge/services/api/internal/health"
 	"github.com/klipforge/klipforge/services/api/internal/httpapi"
+	"github.com/klipforge/klipforge/services/api/internal/participation"
 	"github.com/klipforge/klipforge/services/api/internal/server"
 )
 
@@ -69,7 +70,9 @@ func run() error {
 	authHandler := httpapi.NewAuthHandler(authService, redis, cfg.Auth, logger)
 	campaignService := campaign.NewService(campaign.NewRepository(postgres.Pool()))
 	campaignHandler := httpapi.NewCampaignHandler(campaignService, authHandler.Authorization(), logger)
-	router := httpapi.NewRouterWithCampaigns(cfg, logger, healthHandler, authHandler, campaignHandler)
+	participationService := participation.NewService(participation.NewRepository(postgres.Pool()), campaign.NewRepository(postgres.Pool()))
+	participationHandler := httpapi.NewParticipationHandler(participationService, authHandler.Authorization())
+	router := httpapi.NewRouterWithCampaigns(cfg, logger, healthHandler, authHandler, campaignHandler, participationHandler)
 	httpServer := server.New(cfg.HTTP, router, logger)
 
 	serveErrors := make(chan error, 1)

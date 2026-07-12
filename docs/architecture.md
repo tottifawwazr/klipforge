@@ -9,7 +9,7 @@ KlipForge is a Docker Compose monorepo with these runtime services:
 - `postgres`: PostgreSQL 16 persistent local database.
 - `redis`: Redis 7 persistent local cache and coordination foundation.
 
-The API exposes authentication under `/api/v1/auth` while retaining the public health endpoints. Phase 2C adds reusable authorization guards and domain policy code, but intentionally exposes no incomplete product or test-only routes.
+The API exposes authentication under `/api/v1/auth`, public campaign discovery under `/api/v1/campaigns`, and protected Phase 3B participation/submission routes while retaining public health endpoints.
 
 ## Database architecture
 
@@ -66,6 +66,12 @@ Public health, registration, login, refresh, and cookie-based logout routes rema
 Phase 3A adds `internal/campaign` with separate HTTP handler, service, repository, validation, lifecycle, and audit responsibilities. The campaign service owns the DRAFT/ACTIVE/PAUSED/COMPLETED/CANCELLED transition rules. Its repository uses PostgreSQL transactions for campaign records, platform and requirement replacement, and audit entries.
 
 Public campaign routes mount separately from brand and administrator management routes. Brand and administrator routes compose the existing authentication, active-user, active-session, and role middleware; the campaign service then verifies database ownership before returning private data or writing state.
+
+## Participation module
+
+Phase 3B adds `internal/participation`, which keeps HTTP transport, eligibility/ownership service rules, PostgreSQL repository queries, URL normalization, domain errors, and audit writes separated. The router mounts CLIPPER self-service routes below `/clipper`, campaign join/submission creation below `/campaigns`, BRAND visibility beneath the existing `/brand/campaigns` routes, and explicit read-only ADMIN inspection below `/admin`.
+
+The service reads trusted campaign and participant relationships before writes and the repository performs the business insert/update and audit insert in one transaction. PostgreSQL remains the authority for duplicate membership, duplicate canonical content URL, participant/campaign pairing, and campaign-platform validity. URL validation is pure parsing and normalization; the API does not fetch creator URLs.
 
 ## Operational workflow
 

@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/klipforge/klipforge/services/api/internal/config"
 	"github.com/klipforge/klipforge/services/api/internal/health"
 )
@@ -83,6 +85,15 @@ func TestRouterHandlesAllowedCORSPreflight(t *testing.T) {
 	if recorder.Header().Get("Access-Control-Allow-Origin") != "http://localhost:3000" {
 		t.Fatalf("allow origin = %q", recorder.Header().Get("Access-Control-Allow-Origin"))
 	}
+}
+
+func TestSharedBrandRoutesRegisterAfterExistingRoutes(t *testing.T) {
+	router := chi.NewRouter()
+	router.Get("/existing", func(http.ResponseWriter, *http.Request) {})
+	authorization := &AuthorizationMiddleware{}
+
+	NewCampaignHandler(nil, authorization, nil).RegisterBrandRoutes(router)
+	NewParticipationHandler(nil, authorization).RegisterBrandRoutes(router)
 }
 
 func serveTestRequest(report health.Report, method, target string, mutate func(*http.Request)) *httptest.ResponseRecorder {

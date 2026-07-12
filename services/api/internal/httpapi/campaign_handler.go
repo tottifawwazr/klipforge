@@ -24,14 +24,21 @@ func NewCampaignHandler(service *campaign.Service, authorization *AuthorizationM
 
 func (h *CampaignHandler) PublicRoutes() http.Handler {
 	r := chi.NewRouter()
+	h.RegisterPublicRoutes(r)
+	return r
+}
+func (h *CampaignHandler) RegisterPublicRoutes(r chi.Router) {
 	r.Get("/", h.publicList)
 	r.Get("/{campaignID}", h.publicGet)
 	r.With(h.authorization.RequireAuthentication, h.authorization.RequireActiveUser, h.authorization.RequireActiveSession, h.authorization.RequireRole(auth.RoleBrand)).Post("/", h.create)
-	return r
 }
 func (h *CampaignHandler) BrandRoutes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(h.authorization.RequireAuthentication, h.authorization.RequireActiveUser, h.authorization.RequireActiveSession, h.authorization.RequireRole(auth.RoleBrand))
+	h.RegisterBrandRoutes(r)
+	return r
+}
+func (h *CampaignHandler) RegisterBrandRoutes(r chi.Router) {
 	r.Get("/", h.brandList)
 	r.Get("/{campaignID}", h.brandGet)
 	r.Patch("/{campaignID}", h.update)
@@ -40,7 +47,6 @@ func (h *CampaignHandler) BrandRoutes() http.Handler {
 	r.Post("/{campaignID}/resume", h.resume)
 	r.Post("/{campaignID}/complete", h.complete)
 	r.Post("/{campaignID}/cancel", h.cancel)
-	return r
 }
 func (h *CampaignHandler) AdminRoutes() http.Handler {
 	r := chi.NewRouter()
