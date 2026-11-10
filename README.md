@@ -61,7 +61,6 @@ Prerequisite: Docker with Compose support.
 ```bash
 git clone https://github.com/tottifawwazr/klipforge.git
 cd klipforge
-git checkout feat/product-completion
 ```
 
 Copy `.env.example` to `.env` (`cp .env.example .env` on macOS/Linux, or `Copy-Item .env.example .env` in PowerShell). Keep `.env` local. The supplied credentials and secrets are development placeholders.
