@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  --kf-color-overlay: rgba(8, 20, 14, 0.56);
   --kf-color-canvas: #f7f9f7;
   --kf-color-surface: #ffffff;
   --kf-color-surface-subtle: #fafcfa;
@@ -30,6 +31,10 @@
   --kf-color-danger-subtle: #fff1f0;
   --kf-color-danger-border: #f4b8b2;
   --kf-color-danger-on-subtle: #7a271a;
+
+  --kf-color-warning-subtle: #fff8e1;
+  --kf-color-warning-border: #e8c978;
+  --kf-color-warning-on-subtle: #7a4d00;
 
   --kf-color-focus: #137a4b;
   --kf-color-selection: #b9e6cb;
@@ -154,4 +159,82 @@ textarea:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Product controls share the established KlipForge semantic tokens. */
+.kf-input {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--kf-color-control-border);
+  border-radius: 12px;
+  background: var(--kf-color-surface);
+  padding: 10px 12px;
+  color: var(--kf-color-foreground);
+  font: inherit;
+}
+.kf-input:disabled {
+  background: var(--kf-color-surface-muted);
+}
+.kf-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 10px 16px;
+  background: var(--kf-color-primary);
+  color: var(--kf-color-foreground-inverse);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms;
+}
+.kf-button:hover {
+  background: var(--kf-color-primary-hover);
+}
+.kf-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.kf-button-secondary {
+  background: var(--kf-color-surface);
+  color: var(--kf-color-foreground);
+  border: 1px solid var(--kf-color-border);
+}
+.kf-button-secondary:hover {
+  background: var(--kf-color-surface-muted);
+}
+.kf-panel {
+  border: 1px solid var(--kf-color-border);
+  border-radius: 16px;
+  background: var(--kf-color-surface);
+  padding: 24px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kf-button {
+    transition: none;
+  }
+  .animate-spin {
+    animation: none;
+  }
+}
+
+.kf-notice {
+  border: 1px solid var(--kf-color-warning-border);
+  border-radius: 12px;
+  background: var(--kf-color-warning-subtle);
+  color: var(--kf-color-warning-on-subtle);
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.kf-dialog::backdrop {
+  background: var(--kf-color-overlay);
+}
+
+.kf-dialog {
+  box-shadow: var(--kf-shadow-raised);
 }

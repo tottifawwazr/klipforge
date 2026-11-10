@@ -32,7 +32,33 @@ func NewRouterWithModeration(cfg config.Config, logger *slog.Logger, healthHandl
 	return newRouter(cfg, logger, healthHandler, authHandler, campaignHandler, participationHandler, moderationHandler)
 }
 
-func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler, participationHandler *ParticipationHandler, moderationHandler *ModerationHandler) http.Handler {
+func NewRouterWithAnalytics(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler, participationHandler *ParticipationHandler, moderationHandler *ModerationHandler, analyticsHandler *AnalyticsHandler) http.Handler {
+	return newRouter(cfg, logger, healthHandler, authHandler, campaignHandler, participationHandler, moderationHandler, ProductHandlers{Analytics: analyticsHandler})
+}
+
+type ProductHandlers struct {
+	YouTube    *YouTubeHandler
+	Analytics  *AnalyticsHandler
+	Operations *OperationsHandler
+}
+
+func NewRouterWithOperations(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler, participationHandler *ParticipationHandler, moderationHandler *ModerationHandler, analyticsHandler *AnalyticsHandler, operationsHandler *OperationsHandler, youtubeHandlers ...*YouTubeHandler) http.Handler {
+	var youtubeHandler *YouTubeHandler
+	if len(youtubeHandlers) > 0 {
+		youtubeHandler = youtubeHandlers[0]
+	}
+	return newRouter(cfg, logger, healthHandler, authHandler, campaignHandler, participationHandler, moderationHandler, ProductHandlers{Analytics: analyticsHandler, Operations: operationsHandler, YouTube: youtubeHandler})
+}
+
+func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHandler, authHandler *AuthHandler, campaignHandler *CampaignHandler, participationHandler *ParticipationHandler, moderationHandler *ModerationHandler, features ...ProductHandlers) http.Handler {
+	var analyticsHandler *AnalyticsHandler
+	var operationsHandler *OperationsHandler
+	var youtubeHandler *YouTubeHandler
+	if len(features) > 0 {
+		analyticsHandler = features[0].Analytics
+		operationsHandler = features[0].Operations
+		youtubeHandler = features[0].YouTube
+	}
 	router := chi.NewRouter()
 
 	router.Use(requestIDMiddleware)
@@ -46,12 +72,32 @@ func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHand
 	router.Get("/healthz", healthHandler.Liveness)
 	router.Route("/api/v1", func(api chi.Router) {
 		api.Get("/health", healthHandler.Readiness)
+		if analyticsHandler != nil && authHandler != nil {
+			api.With(authHandler.Authorization().RequireAuthentication, authHandler.Authorization().RequireActiveUser, authHandler.Authorization().RequireActiveSession).Get("/analytics", analyticsHandler.overview)
+		}
 		if authHandler != nil {
 			api.Mount("/auth", authHandler.Routes())
+		}
+		if youtubeHandler != nil && authHandler != nil {
+			guards := []func(http.Handler) http.Handler{authHandler.Authorization().RequireAuthentication, authHandler.Authorization().RequireActiveUser, authHandler.Authorization().RequireActiveSession}
+			api.With(guards...).Get("/integrations/youtube", youtubeHandler.index)
+			api.With(guards...).Get("/integrations/youtube/submissions/{submissionID}", youtubeHandler.metrics)
+		}
+		if operationsHandler != nil && authHandler != nil {
+			protected := chi.NewRouter()
+			protected.Use(authHandler.Authorization().RequireAuthentication, authHandler.Authorization().RequireActiveUser, authHandler.Authorization().RequireActiveSession)
+			protected.Get("/payouts", operationsHandler.list)
+			protected.Get("/notifications", operationsHandler.notifications)
+			protected.Post("/notifications/{notificationID}/read", operationsHandler.read)
+			api.Mount("/account", protected)
 		}
 		if campaignHandler != nil {
 			campaignRoutes := chi.NewRouter()
 			campaignHandler.RegisterPublicRoutes(campaignRoutes)
+			if analyticsHandler != nil {
+				campaignRoutes.With(authHandler.Authorization().RequireAuthentication, authHandler.Authorization().RequireActiveUser, authHandler.Authorization().RequireActiveSession).Get("/{campaignID}/analytics", analyticsHandler.overview)
+				campaignRoutes.With(authHandler.Authorization().RequireAuthentication, authHandler.Authorization().RequireActiveUser, authHandler.Authorization().RequireActiveSession).Get("/{campaignID}/leaderboard", analyticsHandler.leaderboard)
+			}
 			brandCampaignRoutes := chi.NewRouter()
 			brandCampaignRoutes.Use(authHandler.Authorization().RequireAuthentication, authHandler.Authorization().RequireActiveUser, authHandler.Authorization().RequireActiveSession, authHandler.Authorization().RequireRole(auth.RoleBrand))
 			campaignHandler.RegisterBrandRoutes(brandCampaignRoutes)
@@ -66,7 +112,7 @@ func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHand
 			api.Mount("/brand/campaigns", brandCampaignRoutes)
 			api.Mount("/admin/campaigns", campaignHandler.AdminRoutes())
 		}
-		if participationHandler != nil || moderationHandler != nil {
+		if participationHandler != nil || moderationHandler != nil || analyticsHandler != nil || operationsHandler != nil || youtubeHandler != nil {
 			adminRoutes := chi.NewRouter()
 			adminRoutes.Use(authHandler.Authorization().RequireAuthentication, authHandler.Authorization().RequireActiveUser, authHandler.Authorization().RequireActiveSession, authHandler.Authorization().RequireRole(auth.RoleAdmin))
 			if participationHandler != nil {
@@ -74,6 +120,18 @@ func newRouter(cfg config.Config, logger *slog.Logger, healthHandler *HealthHand
 			}
 			if moderationHandler != nil {
 				moderationHandler.RegisterAdminRoutes(adminRoutes)
+			}
+			if analyticsHandler != nil {
+				adminRoutes.Post("/metrics/collect", analyticsHandler.collect)
+			}
+			if operationsHandler != nil {
+				adminRoutes.Post("/payouts", operationsHandler.create)
+				adminRoutes.Post("/payout-quotes", operationsHandler.quote)
+				adminRoutes.Post("/payouts/{payoutID}/{action}", operationsHandler.transition)
+				adminRoutes.Get("/audit", operationsHandler.audit)
+			}
+			if youtubeHandler != nil {
+				adminRoutes.Post("/youtube/submissions/{submissionID}/refresh", youtubeHandler.refresh)
 			}
 			api.Mount("/admin", adminRoutes)
 		}

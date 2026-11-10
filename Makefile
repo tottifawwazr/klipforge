@@ -4,11 +4,11 @@ COMPOSE := docker compose
 
 help:
 	@echo "KlipForge development commands:"
-	@echo "  make dev         Build and run the complete Phase 1 stack"
+	@echo "  make dev         Build and run the complete application stack"
 	@echo "  make infra-up    Start PostgreSQL and Redis in the background"
 	@echo "  make infra-down  Stop PostgreSQL and Redis"
-	@echo "  make up          Build and run the Phase 1 stack in the background"
-	@echo "  make down        Stop the Phase 1 stack (data volumes are preserved)"
+	@echo "  make up          Build and run the application stack in the background"
+	@echo "  make down        Stop the application stack (data volumes are preserved)"
 	@echo "  make ps          Show service status"
 	@echo "  make logs        Follow stack logs"
 	@echo "  make build       Build API and web images"
@@ -47,7 +47,7 @@ build:
 	$(COMPOSE) build api web
 
 test:
-	cd services/api && go test ./...
+	cd services/api && go test -p 1 ./...
 	cd apps/web && npm run test --if-present
 
 lint:

@@ -96,3 +96,17 @@ Review and flag reasons are normalized plain text with a 1,000-character limit. 
 ## Secrets
 
 `JWT_SECRET` and `REFRESH_TOKEN_PEPPER` must each contain at least 32 characters and must be independently generated. Development fallback values are rejected when `APP_ENV=production`. No production secrets belong in committed files.
+
+## Browser session bridge and product operations
+
+The Next.js `/api/backend/*` bridge targets a fixed internal API origin, keeps access and refresh tokens in HttpOnly SameSite=Lax cookies, strips bearer tokens from response JSON, checks exact public Host/Origin for mutations, and caps request bodies at 1 MiB. Refresh is coordinated within a tab and across tabs using Web Locks where available. No bearer token is stored in localStorage. Production HTTPS sets Secure cookies.
+
+Analytics authorization executes before Redis cache lookup, including role, current account/session, campaign ownership or accepted participation. Collection uses a short Redis lease, ownership-checked release, bounded batch execution, and campaign/submission row locks. Simulated metrics are never represented as verified external social statistics.
+
+Payout creation locks campaign then submission, rechecks an exact preview amount, reserves budget atomically, and persists idempotency response/audit/notification in the same transaction. Only completed campaigns with approved clips and recorded snapshots qualify. Failure refunds once; retry reserves again; processed records are terminal. Processing requires explicit acknowledgment of an externally completed payment and a manual reference; this API does not send funds.
+
+New audit and notification UI endpoints expose safe fields only. Notifications are restricted to their owner. Public registration never accepts an administrator role.
+
+## Public YouTube integration
+
+Ownership and active-principal checks execute before cache lookup/provider requests. Only approved YouTube submissions are eligible. Video IDs are extracted from allow-listed HTTPS URLs, then sent to a fixed Google endpoint; no submitted URL is fetched and redirects are refused. Keys remain server-only and provider request URLs/raw errors never enter client responses. Dedicated Redis data expires in 15 minutes; one-minute request guards and a 1,000-request application daily cap limit external calls. Missing optional counters stay null. Public counters are separate from simulated snapshots and are not used for payouts or ownership verification.

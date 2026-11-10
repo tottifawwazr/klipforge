@@ -3,7 +3,13 @@
 Base URL: `/api/v1`. JSON errors use:
 
 ```json
-{"error":{"code":"AUTHENTICATION_FAILED","message":"Authentication failed.","request_id":"request-id"}}
+{
+  "error": {
+    "code": "AUTHENTICATION_FAILED",
+    "message": "Authentication failed.",
+    "request_id": "request-id"
+  }
+}
 ```
 
 All responses include `X-Request-ID`. Authentication request bodies reject unknown JSON fields and trailing JSON values.
@@ -13,13 +19,33 @@ All responses include `X-Request-ID`. Authentication request bodies reject unkno
 `POST /api/v1/auth/register`
 
 ```json
-{"email":"creator@example.com","password":"StrongPass1","full_name":"Ari Lin","role":"CLIPPER"}
+{
+  "email": "creator@example.com",
+  "password": "StrongPass1",
+  "full_name": "Ari Lin",
+  "role": "CLIPPER"
+}
 ```
 
 `role` is limited to `BRAND` or `CLIPPER`. Success is `201 Created`, sets the refresh cookie, and returns the access token, safe user data, and session expiry:
 
 ```json
-{"access_token":"...","token_type":"Bearer","expires_in":900,"user":{"id":"uuid","email":"creator@example.com","role":"CLIPPER","is_active":true,"display_name":"Ari Lin","avatar_url":null,"bio":null,"created_at":"..."},"session":{"id":"uuid","expires_at":"..."}}
+{
+  "access_token": "...",
+  "token_type": "Bearer",
+  "expires_in": 900,
+  "user": {
+    "id": "uuid",
+    "email": "creator@example.com",
+    "role": "CLIPPER",
+    "is_active": true,
+    "display_name": "Ari Lin",
+    "avatar_url": null,
+    "bio": null,
+    "created_at": "..."
+  },
+  "session": { "id": "uuid", "expires_at": "..." }
+}
 ```
 
 Relevant errors: `VALIDATION_ERROR`, `EMAIL_ALREADY_REGISTERED`, `RATE_LIMIT_EXCEEDED`.
@@ -29,7 +55,7 @@ Relevant errors: `VALIDATION_ERROR`, `EMAIL_ALREADY_REGISTERED`, `RATE_LIMIT_EXC
 `POST /api/v1/auth/login`
 
 ```json
-{"email":"clipper@klipforge.local","password":"Clipper123!"}
+{ "email": "clipper@klipforge.local", "password": "Clipper123!" }
 ```
 
 Success is `200 OK` with the same token response and refresh cookie as registration. Unknown accounts and wrong passwords both return `AUTHENTICATION_FAILED`. Inactive accounts return `USER_INACTIVE`.
@@ -63,7 +89,18 @@ Revokes all refresh sessions for the authenticated user, clears the current cook
 Success is `200 OK`:
 
 ```json
-{"user":{"id":"uuid","email":"clipper@klipforge.local","role":"CLIPPER","is_active":true,"display_name":"Ari Lin","avatar_url":null,"bio":"...","created_at":"..."}}
+{
+  "user": {
+    "id": "uuid",
+    "email": "clipper@klipforge.local",
+    "role": "CLIPPER",
+    "is_active": true,
+    "display_name": "Ari Lin",
+    "avatar_url": null,
+    "bio": "...",
+    "created_at": "..."
+  }
+}
 ```
 
 Protected endpoints distinguish `ACCESS_TOKEN_MISSING`, `ACCESS_TOKEN_INVALID`, `ACCESS_TOKEN_EXPIRED`, `SESSION_REVOKED`, and `USER_INACTIVE`.
@@ -82,18 +119,18 @@ Every error retains the standard request-ID envelope. Database errors and owners
 
 ### Authorization matrix
 
-| Capability | ADMIN | BRAND | CLIPPER |
-| --- | --- | --- | --- |
-| Manage campaigns | Any campaign, explicit admin policy | Own campaigns only | Never |
-| View campaigns | Any campaign | Own campaigns | Public active campaigns |
-| Join campaigns | No automatic participation | Never | Active campaigns when rules permit |
-| View participants | Inspection endpoints | Own campaigns | Own participation only |
-| Manage submissions | Explicit moderation endpoints | Moderate own campaign submissions | Own PENDING submission fields only |
-| Review submissions | Cross-campaign administration | Own campaigns only | Never |
-| View payouts | Any | Own campaign obligations | Own payouts only |
-| Process payouts | Only role permitted | Never | Never |
-| Private profiles | Administrative view | Self only | Self only |
-| Update profiles | Self only | Self only | Self only |
+| Capability         | ADMIN                               | BRAND                             | CLIPPER                            |
+| ------------------ | ----------------------------------- | --------------------------------- | ---------------------------------- |
+| Manage campaigns   | Any campaign, explicit admin policy | Own campaigns only                | Never                              |
+| View campaigns     | Any campaign                        | Own campaigns                     | Public active campaigns            |
+| Join campaigns     | No automatic participation          | Never                             | Active campaigns when rules permit |
+| View participants  | Inspection endpoints                | Own campaigns                     | Own participation only             |
+| Manage submissions | Explicit moderation endpoints       | Moderate own campaign submissions | Own PENDING submission fields only |
+| Review submissions | Cross-campaign administration       | Own campaigns only                | Never                              |
+| View payouts       | Any                                 | Own campaign obligations          | Own payouts only                   |
+| Process payouts    | Only role permitted                 | Never                             | Never                              |
+| Private profiles   | Administrative view                 | Self only                         | Self only                          |
+| Update profiles    | Self only                           | Self only                         | Self only                          |
 
 Administrator access is explicit per policy; there is no blanket bypass.
 
@@ -143,12 +180,12 @@ Active ADMIN users may use `GET /api/v1/admin/campaigns`, `GET /api/v1/admin/cam
 
 ### Lifecycle
 
-| From | Allowed action | To |
-| --- | --- | --- |
-| DRAFT | publish, cancel | ACTIVE, CANCELLED |
-| ACTIVE | pause, complete, cancel | PAUSED, COMPLETED, CANCELLED |
-| PAUSED | resume, complete, cancel | ACTIVE, COMPLETED, CANCELLED |
-| COMPLETED/CANCELLED | none | terminal |
+| From                | Allowed action           | To                           |
+| ------------------- | ------------------------ | ---------------------------- |
+| DRAFT               | publish, cancel          | ACTIVE, CANCELLED            |
+| ACTIVE              | pause, complete, cancel  | PAUSED, COMPLETED, CANCELLED |
+| PAUSED              | resume, complete, cancel | ACTIVE, COMPLETED, CANCELLED |
+| COMPLETED/CANCELLED | none                     | terminal                     |
 
 Publishing and resuming require valid campaign content, a usable positive remaining budget, an unexpired date range, and at least one allowed platform. Every create, update, transition, and administrative cancellation creates a safe audit record.
 
@@ -205,15 +242,44 @@ Queue parameters are `page`, `limit` (maximum 100), `status`, `platform`, `searc
 
 ### Transition and reason rules
 
-| Current status | Approve | Reject | Flag |
-| --- | --- | --- | --- |
-| `PENDING` | `APPROVED` | `REJECTED` | `FLAGGED` |
-| `FLAGGED` | `APPROVED` | `REJECTED` | Not allowed |
-| `APPROVED` | Not allowed | Not allowed | Not allowed |
-| `REJECTED` | Not allowed | Not allowed | Not allowed |
+| Current status | Approve     | Reject      | Flag        |
+| -------------- | ----------- | ----------- | ----------- |
+| `PENDING`      | `APPROVED`  | `REJECTED`  | `FLAGGED`   |
+| `FLAGGED`      | `APPROVED`  | `REJECTED`  | Not allowed |
+| `APPROVED`     | Not allowed | Not allowed | Not allowed |
+| `REJECTED`     | Not allowed | Not allowed | Not allowed |
 
 Reject and flag bodies are `{"reason":"plain text"}`. The normalized reason must contain non-whitespace text and be at most 1,000 characters. Approval accepts no fields, clears any prior flag note, and stores no reason. Unknown JSON fields and trailing JSON values are rejected. A CLIPPER sees `rejection_reason` only for a `REJECTED` submission; flag notes and internal moderator IDs are not exposed through CLIPPER submission responses.
 
 Moderation locks the submission row, verifies the current state and trusted campaign relationship, conditionally updates the status, records the authenticated reviewer and database timestamp, and inserts the audit event in one transaction. Concurrent decisions produce one success; later or losing requests receive a 409 such as `SUBMISSION_ALREADY_REVIEWED`, `SUBMISSION_INVALID_TRANSITION`, or `MODERATION_CONFLICT`. Audit actions are `submission.approved`, `submission.rejected`, `submission.flagged`, and `submission.flag_resolved`.
 
 Moderation does not fetch submitted URLs and does not perform metrics verification, social-platform integration, notifications, analytics, leaderboards, or payout work. Those capabilities remain deferred beyond Phase 3C.
+
+## Analytics and operations (product-completion branch)
+
+All routes below require an active authenticated account and session. ADMIN-only endpoints reject other roles. Browser clients use the same-origin `/api/backend/...` bridge instead of handling bearer tokens.
+
+| Method | API path                                  | Access / result                                                         |
+| ------ | ----------------------------------------- | ----------------------------------------------------------------------- |
+| GET    | `/api/v1/analytics`                       | Current actor's aggregate analytics                                     |
+| GET    | `/api/v1/campaigns/{id}/analytics`        | Admin, owner Brand, or accepted Clipper                                 |
+| GET    | `/api/v1/campaigns/{id}/leaderboard`      | Same campaign access; top 100                                           |
+| POST   | `/api/v1/admin/metrics/collect`           | Admin; simulated collection, disabled when provider disabled            |
+| GET    | `/api/v1/account/payouts?page=1`          | Scoped records, 50 per page                                             |
+| GET    | `/api/v1/account/notifications`           | Own latest 100                                                          |
+| POST   | `/api/v1/account/notifications/{id}/read` | Owner-only read marker                                                  |
+| GET    | `/api/v1/admin/audit`                     | Admin; latest 100 safe events                                           |
+| POST   | `/api/v1/admin/payout-quotes`             | Admin; body `submission_id`, read-only quote                            |
+| POST   | `/api/v1/admin/payouts`                   | Admin; `submission_id`, `expected_amount`, and `Idempotency-Key` header |
+| POST   | `/api/v1/admin/payouts/{id}/approve`      | PENDING to APPROVED                                                     |
+| POST   | `/api/v1/admin/payouts/{id}/fail`         | PENDING/APPROVED to FAILED; body `reason`                               |
+| POST   | `/api/v1/admin/payouts/{id}/retry`        | FAILED to PENDING, reserves budget again                                |
+| POST   | `/api/v1/admin/payouts/{id}/process`      | APPROVED to PROCESSED; external manual record only                      |
+
+Process body requires `reference` beginning with `manual:` and `acknowledge_manual_record: true`. Creation requires a 16-100 character idempotency key and an exact amount matching the current quote. Replaying the same request returns the original response without reserving budget again. Changed requests, stale quotes, invalid transitions, or insufficient budget return conflicts. Monetary amounts are decimal strings.
+
+Analytics return `metrics_mode: SIMULATED`, totals, engagement rate, a 30-day timeline, and `last_updated`. The worker snapshots approved clips once per minute while campaigns are ACTIVE, PAUSED, or COMPLETED. A Redis coordination lease and database uniqueness protect repeated collection. It never fetches user-submitted URLs or calls social networks.
+
+## Read-only public YouTube counters
+
+See [youtube-integration.md](youtube-integration.md) for the three authenticated endpoints, setup, nullable counters, retention, quota, authorization and error codes. They do not mutate campaign metric snapshots or payout records. An absent server API key is reported explicitly; a configured flag does not claim a successful live Google request.

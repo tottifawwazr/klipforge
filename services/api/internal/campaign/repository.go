@@ -184,6 +184,8 @@ func loadCampaign(ctx context.Context, db campaignQuerier, id string) (Campaign,
 func loadCampaignDetails(ctx context.Context, db interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 }, c Campaign) (Campaign, error) {
+	c.Platforms = []string{}
+	c.Requirements = []Requirement{}
 	rows, err := db.Query(ctx, `SELECT platform FROM campaign_platforms WHERE campaign_id=$1 ORDER BY platform`, c.ID)
 	if err != nil {
 		return Campaign{}, err

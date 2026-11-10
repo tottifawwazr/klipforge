@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/klipforge/klipforge/services/api/internal/analytics"
 	"github.com/klipforge/klipforge/services/api/internal/auth"
 	"github.com/klipforge/klipforge/services/api/internal/campaign"
 	"github.com/klipforge/klipforge/services/api/internal/config"
@@ -17,8 +18,10 @@ import (
 	"github.com/klipforge/klipforge/services/api/internal/health"
 	"github.com/klipforge/klipforge/services/api/internal/httpapi"
 	"github.com/klipforge/klipforge/services/api/internal/moderation"
+	"github.com/klipforge/klipforge/services/api/internal/operations"
 	"github.com/klipforge/klipforge/services/api/internal/participation"
 	"github.com/klipforge/klipforge/services/api/internal/server"
+	"github.com/klipforge/klipforge/services/api/internal/youtube"
 )
 
 func main() {
@@ -75,7 +78,22 @@ func run() error {
 	participationHandler := httpapi.NewParticipationHandler(participationService, authHandler.Authorization())
 	moderationService := moderation.NewService(moderation.NewRepository(postgres.Pool()))
 	moderationHandler := httpapi.NewModerationHandler(moderationService, authHandler.Authorization(), logger)
-	router := httpapi.NewRouterWithModeration(cfg, logger, healthHandler, authHandler, campaignHandler, participationHandler, moderationHandler)
+	metricsMode := os.Getenv("METRICS_PROVIDER")
+	if metricsMode != "" && metricsMode != "disabled" && metricsMode != "mock" {
+		return fmt.Errorf("METRICS_PROVIDER must be disabled or mock")
+	}
+	analyticsService := analytics.NewService(postgres.Pool(), redis.Client())
+	var metricsCollector *analytics.Collector
+	workerContext, stopWorker := context.WithCancel(context.Background())
+	defer stopWorker()
+	if metricsMode == "mock" {
+		metricsCollector = analytics.NewCollector(postgres.Pool(), redis.Client())
+		go metricsCollector.Run(workerContext, logger)
+	}
+	analyticsHandler := httpapi.NewAnalyticsHandler(analyticsService, metricsCollector, logger)
+	operationsHandler := httpapi.NewOperationsHandler(operations.NewService(postgres.Pool()), logger)
+	youtubeHandler := httpapi.NewYouTubeHandler(youtube.NewService(postgres.Pool(), redis.Client(), os.Getenv("YOUTUBE_API_KEY")))
+	router := httpapi.NewRouterWithOperations(cfg, logger, healthHandler, authHandler, campaignHandler, participationHandler, moderationHandler, analyticsHandler, operationsHandler, youtubeHandler)
 	httpServer := server.New(cfg.HTTP, router, logger)
 
 	serveErrors := make(chan error, 1)

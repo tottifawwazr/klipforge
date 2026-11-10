@@ -4,7 +4,7 @@
 
 KlipForge will be built incrementally. Each phase must be formatted, linted, tested, and verified before the next phase begins. A feature is only marked complete after its runtime or automated verification passes.
 
-Completed phases remain documented as verified baselines. Work proceeds only within the explicitly requested phase; later product phases remain intentionally unimplemented.
+Completed phases remain documented as verified baselines. The current product-completion branch continues the approved MVP through analytics, operations, and the complete UI. Live social metrics and payment transfers remain outside this MVP.
 
 ## Phase 1 — Foundation
 
@@ -103,7 +103,7 @@ Status: Complete (verified 2026-07-11)
 
 ## Phase 3 — Campaign workflow
 
-Status: In progress
+Status: Complete
 
 ### Phase 3A - Campaign management
 
@@ -134,38 +134,37 @@ Status: Complete (verified 2026-07-12)
 - [x] PostgreSQL row-lock concurrency protection and ownership integration tests.
 - [x] Reversible migration `000008_submission_moderation_constraints`, seed compatibility, API build, and live endpoint verification.
 
-## Phase 4 — Metrics and analytics
+## Phase 4 - Metrics and analytics
 
-Status: Not started
+Status: Implemented; local verification documented separately
 
-- Deterministic social metric providers
-- Metrics worker and coordination
-- Analytics aggregation
-- Redis leaderboards and campaign cache
+- Deterministic, explicitly simulated metrics for supported social URLs.
+- Redis-coordinated worker, idempotent snapshots, monotonic counters, transactional state rechecks.
+- Role-scoped aggregates, 30-day timeline, generation-aware cache, and Redis leaderboards.
 
-## Phase 5 — Payouts and operations
+## Phase 5 - Payouts and operations
 
-Status: Not started
+Status: Implemented; local verification documented separately
 
-- Transactional payout calculations
-- Idempotency and concurrency controls
-- Audit logs
-- Notifications
+- Decimal CPM calculations with per-clip cap and remaining-budget protection.
+- Idempotent creation, row-lock concurrency, preview/revalidation, failure refunds, and retry reservations.
+- Audited approval and external payment recording; no real money transfer.
+- Role-scoped payout history, owned notifications, and administrative audit view.
 
-## Phase 6 — Complete product UI
+## Phase 6 - Product UI
 
-Status: Not started
+Status: Implemented; local verification documented separately
 
-- Role-specific dashboards
-- Responsive workflows
-- Loading, empty, and error states
-- Toasts and confirmation dialogs
+- Responsive Brand, Clipper, and Admin workspace with authentication and secure cookie bridge.
+- Campaign lifecycle/editor, participation, pending submission editing, and moderation.
+- Analytics, rankings, payouts, notifications, audit, loading/error/empty states, confirmations.
+- Current browsing caps and provider limitations documented in README.
 
-## Phase 7 — Quality and documentation
+## Phase 7 - Quality and documentation
 
-Status: Not started
+Status: Local MVP validation complete; remote CI not run
 
-- Full backend, frontend, integration, and end-to-end test suites
-- Complete product and engineering documentation
-- CI workflows
-- Final security, accessibility, and performance cleanup
+- Go unit/integration tests, frontend unit tests, and Playwright campaign-to-payout workflow.
+- CI definition with ephemeral PostgreSQL and Redis, production build, race checks, and browser tests.
+- Local startup helper, security/API documentation, and preview instructions.
+- No commit, push, or deployment is part of the current local validation.

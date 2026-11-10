@@ -47,3 +47,6 @@ func (r *Redis) Allow(ctx context.Context, key string, limit int64, window time.
 	}
 	return count.Val() <= limit, nil
 }
+
+// Client exposes the shared connection pool to coordinated background jobs.
+func (r *Redis) Client() *redisclient.Client { return r.client }

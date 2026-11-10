@@ -29,11 +29,11 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <ButtonLink href="#health-check" variant="secondary">
-            Live status
+          <ButtonLink href="/login" variant="secondary">
+            Sign in
           </ButtonLink>
-          <ButtonLink href="#get-started">
-            Explore KlipForge
+          <ButtonLink href="/register">
+            Get started
             <ArrowRight aria-hidden="true" size={20} />
           </ButtonLink>
         </div>
@@ -58,8 +58,8 @@ export function SiteHeader() {
               </a>
             ))}
             <div className="mt-2 border-t border-border-subtle pt-2">
-              <ButtonLink className="w-full" href="#get-started">
-                Explore KlipForge
+              <ButtonLink className="w-full" href="/register">
+                Get started
                 <ArrowRight aria-hidden="true" size={20} />
               </ButtonLink>
             </div>
